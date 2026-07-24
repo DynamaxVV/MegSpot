@@ -1,5 +1,11 @@
 import * as GLOBAL_CONSTANT from '../../constants'
 import { trimSep } from '@/utils/file'
+import {
+  DEFAULT_COMPARE_MODE,
+  DEFAULT_SORT_CONFIG,
+  rebuildCompareTask,
+  swapCompareTaskSides
+} from '@/utils/imagePairing'
 
 export const useCurrentCollection = (state) => {
   let collection = state.collections.find((collection) => collection.name === state.collectionName)
@@ -12,6 +18,42 @@ export const useCurrentCollection = (state) => {
     state.collections.push(collection)
   }
   return collection
+}
+
+const createCompareTask = () => ({
+  sources: {
+    left: [],
+    right: []
+  },
+  leftItems: [],
+  rightItems: [],
+  leftSort: { ...DEFAULT_SORT_CONFIG },
+  rightSort: { ...DEFAULT_SORT_CONFIG },
+  rows: [],
+  currentIndex: 0,
+  mode: DEFAULT_COMPARE_MODE,
+  started: false,
+  dirty: false,
+  version: 0
+})
+
+const mergeCompareSources = (taskSources = {}, fallbackSources = {}) => ({
+  left: Array.isArray(taskSources.left) ? taskSources.left : (fallbackSources.left || []),
+  right: Array.isArray(taskSources.right) ? taskSources.right : (fallbackSources.right || [])
+})
+
+const normalizeCompareTask = (task = {}, fallbackTask = createCompareTask()) => {
+  const baseTask = createCompareTask()
+  const compareTask = rebuildCompareTask({
+    ...baseTask,
+    ...fallbackTask,
+    ...task,
+    sources: mergeCompareSources(task.sources, fallbackTask.sources || baseTask.sources)
+  })
+  compareTask.started = typeof compareTask.started === 'boolean' ? compareTask.started : false
+  compareTask.dirty = typeof compareTask.dirty === 'boolean' ? compareTask.dirty : false
+  compareTask.version = Number.isFinite(compareTask.version) ? compareTask.version : 0
+  return compareTask
 }
 
 const imageStore = {
@@ -30,6 +72,7 @@ const imageStore = {
     imageConfig: {
       smooth: true,
       layout: GLOBAL_CONSTANT.LAYOUT_1x2,
+      displayMode: 'fit',
       defaultSort: {
         order: 'asc',
         field: 'name'
@@ -38,7 +81,12 @@ const imageStore = {
     //当前文件夹路径
     currentPath: '',
     // 记忆文件树展开
-    expandData: []
+    expandData: [],
+    recentCompareFolders: {
+      left: '',
+      right: ''
+    },
+    compareTask: createCompareTask()
   },
   getters: {
     imageList: (state) => {
@@ -54,7 +102,11 @@ const imageStore = {
     getImageFolders: (state) => () => state.imageFolders,
     imageConfig: (state) => state.imageConfig,
     currentPath: (state) => state.currentPath,
-    expandData: (state) => state.expandData
+    expandData: (state) => state.expandData,
+    recentCompareFolders: (state) => state.recentCompareFolders,
+    compareTask: (state) => state.compareTask,
+    compareRows: (state) => state.compareTask.rows,
+    currentCompareRow: (state) => state.compareTask.rows[state.compareTask.currentIndex] || null
   },
   mutations: {
     SET_IMAGE_CONFIG: (state, configOb) => {
@@ -138,6 +190,9 @@ const imageStore = {
     SET_CURRENT_FOLDER_PATH: (state, newFolderPath) => {
       state.currentPath = newFolderPath
     },
+    SET_RECENT_COMPARE_FOLDER: (state, { side, folderPath }) => {
+      state.recentCompareFolders = { ...(state.recentCompareFolders || {}), [side]: folderPath }
+    },
     // 记忆文件树展开情况
     ADD_IMAGE_EXPAND_DATA: (state, newOpenFolder) => {
       state.expandData.push(newOpenFolder)
@@ -146,6 +201,19 @@ const imageStore = {
       state.expandData = state.expandData.filter((item) => {
         return !item.startsWith(closeFolder)
       })
+    },
+    SET_COMPARE_TASK: (state, task) => {
+      state.compareTask = normalizeCompareTask(task, state.compareTask)
+    },
+    PATCH_COMPARE_TASK: (state, patch) => {
+      state.compareTask = normalizeCompareTask({
+        ...state.compareTask,
+        ...patch,
+        version: state.compareTask.version + 1
+      }, state.compareTask)
+    },
+    CLEAR_COMPARE_TASK: (state) => {
+      state.compareTask = createCompareTask()
     }
   },
   actions: {
@@ -213,12 +281,42 @@ const imageStore = {
     setFolderPath({ commit }, newFolderPath) {
       commit('SET_CURRENT_FOLDER_PATH', newFolderPath)
     },
+    setRecentCompareFolder({ commit }, payload) {
+      commit('SET_RECENT_COMPARE_FOLDER', payload)
+    },
     // 记忆文件树展开
     addExpandData({ commit }, newFolder) {
       commit('ADD_IMAGE_EXPAND_DATA', newFolder)
     },
     removeExpandData({ commit }, newFolderArr) {
       commit('REMOVE_IMAGE_EXPAND_DATA', newFolderArr)
+    },
+    setCompareTask({ commit }, compareTask) {
+      commit('SET_COMPARE_TASK', compareTask)
+    },
+    patchCompareTask({ commit }, patch) {
+      commit('PATCH_COMPARE_TASK', patch)
+    },
+    clearCompareTask({ commit }) {
+      commit('CLEAR_COMPARE_TASK')
+    },
+    swapCompareTask({ state, commit }) {
+      commit('SET_COMPARE_TASK', {
+        ...swapCompareTaskSides(state.compareTask),
+        version: state.compareTask.version + 1
+      })
+    },
+    refreshCompareTask({ state, commit }, patch = {}) {
+      const nextTask = rebuildCompareTask({
+        ...state.compareTask,
+        ...patch,
+        sources: {
+          left: patch.sources && Array.isArray(patch.sources.left) ? patch.sources.left : state.compareTask.sources.left,
+          right: patch.sources && Array.isArray(patch.sources.right) ? patch.sources.right : state.compareTask.sources.right
+        },
+        version: state.compareTask.version + 1
+      })
+      commit('SET_COMPARE_TASK', nextTask)
     }
   }
 }

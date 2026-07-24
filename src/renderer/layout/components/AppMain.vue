@@ -13,8 +13,6 @@ import path from 'path'
 var electron = require('electron')
 var userData = require('@electron/remote').app.getPath('userData')
 console.log('userData', userData)
-import { createNamespacedHelpers } from 'vuex'
-const { mapGetters } = createNamespacedHelpers('preferenceStore')
 import { isDirectory, isExist } from '@/utils/file'
 const IMAGE_MODE = 'imageMode'
 const VIDEO_MODE = 'videoMode'
@@ -113,9 +111,6 @@ export default {
         })
       }
     }
-  },
-  computed: {
-    ...mapGetters(['lastRouterPath'])
   },
   mounted() {
     electron.ipcRenderer.on('debugMessage', (event, text) => {

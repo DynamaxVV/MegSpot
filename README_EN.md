@@ -41,6 +41,26 @@ Selecting is a very distinctive and useful operating feature in **MegSpot**. It 
 
 ---
 
+## Paired Image Comparison
+
+The dashboard provides a two-sided paired comparison workflow: baseline images on the left and comparison images on the right. Each side accepts dropped images or folders, as well as the **Select Images** and **Select Folder** actions. Folder sources include direct child images only, and duplicate paths are removed.
+
+- Images first pair by exact basename while ignoring filename extension and case. Remaining images pair sequentially in each side's sort order; unmatched images remain visible.
+- Each side can sort by name, modified time, or size in ascending or descending order. Overall pair order follows the left side.
+- The workspace supports **Side by Side**, **Single**, and **Split** modes. Single mode uses the full canvas for the comparison image; holding Left or Right temporarily shows the other side, while Up and Down move between pairs.
+- In the workspace, Space resets the current pair to its initial position. Double-clicking an image selects it so zooming, rotation, and related operations can target that image alone.
+- **Original / High-resolution mode** renders the canvas at the device pixel ratio; normal mode keeps the adaptive display.
+- File-content edits reload the current display immediately. Additions, removals, and renames freeze the task until **Refresh Pairs** is explicitly chosen, preserving pair order.
+- Every launch starts on an empty dashboard and does not restore the previous pair task. The last folder opened through each side's folder picker remains available as a shortcut.
+
+### 2.2.12-vv1.0.1 Update
+
+- Fixed sorting and pair order when multiple folder sources are used on the dashboard.
+- Fixed canvas sizing and layout rendering when Split mode is embedded in the comparison workspace.
+- Added Space-to-reset, double-click single-image selection/zoom, and Original/High-resolution display modes.
+
+---
+
 ## Drag and Drop Comparison
 
 From the pictures selected by the user, split the two pictures selected in the comparison file gallery (the first two pictures in the default list)
@@ -194,6 +214,14 @@ Download the installation package of the corresponding system in Github Releases
 ## LICENSE
 
 MegSpot use Apache License, Version 2.0
+
+## This Modified Version
+
+This repository is based on upstream MegSpot 2.2.12 on GitHub. The current modified version is 2.2.12-vv1.0.1. In addition to paired-image comparison, it includes multi-folder sorting, Split-mode layout fixes, Space reset, double-click single-image zoom, and Original/High-resolution display modes.
+
+The identifier for this modified version is `MegSpot-2.2.12-vv1.0.1`. It identifies this modification and its packaged artifacts and does not change the original Apache License, Version 2.0 terms. The original copyright and third-party licenses remain governed by `LICENSE`, `COPYRIGHT`, and the applicable notices in this repository.
+
+Windows x64 package: `MegSpot-2.2.12-vv1.0.0-win-x64.exe` (existing filename); a subsequent 2.2.12-vv1.0.1 build should use the matching versioned filename.
 
 ## Citation
 

@@ -1,5 +1,5 @@
 <template>
-  <el-header class="header" flex="cross:center" height="42px">
+  <el-header :class="['header', { 'mac-header': isMac }]" flex="cross:center" height="42px">
     <div class="nav-container" flex="main:justify cross:center" flex-box="1">
       <img
         src="../../assets/images/big_logo_white.png"
@@ -34,7 +34,8 @@ export default {
   components: { AboutDialog, UpdateDialog },
   data() {
     return {
-      subNav: ''
+      subNav: '',
+      isMac: process.platform === 'darwin'
     }
   },
   watch: {
@@ -79,6 +80,9 @@ export default {
   color: #ffffff;
   padding-left: 0px;
   padding-right: 15px;
+  &.mac-header {
+    padding-left: 76px;
+  }
   .nav-container {
     .right-menu {
       color: $labelColor;

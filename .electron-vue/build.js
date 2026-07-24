@@ -21,8 +21,9 @@ else if (process.env.BUILD_TARGET === 'web') web()
 else build()
 
 function clean() {
-  del.sync(['dist/electron/*', 'dist/web/*', 'build/*', '!build/icons', '!build/lib', '!build/lib/electron-build.*', '!build/icons/icon.*'])
-  console.log(`\n${doneLog}clear done`)
+  // Keep packaged artifacts from other targets; only generated webpack output must be reset.
+  del.sync(['dist/electron/*', 'dist/web/*'])
+  console.log(`\n${doneLog}clear generated output done`)
   process.exit()
 }
 

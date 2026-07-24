@@ -64,7 +64,6 @@ const preferenceStore = {
       multi: false
     },
     uuid: null,
-    lastRouterPath: '/dashboard',
     hotkeysMap: null
   },
   getters: {
@@ -73,7 +72,6 @@ const preferenceStore = {
     preference: (state) => state.preference,
     histConfig: (state) => state.histConfig,
     hotkeysMap: (state) => state.hotkeysMap,
-    lastRouterPath: (state) => state.lastRouterPath,
     colorLevelSetting: (state) => state.colorLevelSetting
   },
   mutations: {
@@ -100,9 +98,6 @@ const preferenceStore = {
     SET_COLOR_LEVEL: (state, newPreOb) => {
       const newPreference = Object.assign({}, state.colorLevelSetting, newPreOb)
       state.colorLevelSetting = newPreference
-    },
-    SET_LAST_ROUTER_PATH: (state, routerPath) => {
-      state.lastRouterPath = routerPath
     },
     ENSURE_HOTKEYS_MAP: (state) => {
       if (getType(state.hotkeysMap) !== 'Map' || state.hotkeysMap.size === 0) {
@@ -132,9 +127,6 @@ const preferenceStore = {
     },
     setGamma({ commit }, newGamma) {
       commit('SET_GAMMA', newGamma)
-    },
-    setLastRouterPath({ commit }, routerPath) {
-      commit('SET_LAST_ROUTER_PATH', routerPath)
     },
     ensureHotkeysMap({ commit }) {
       commit('ENSURE_HOTKEYS_MAP')

@@ -96,6 +96,102 @@ export default {
     compare: "ドラッグアンドドロップで2つの画像を比較します"
   },
   dashboard: {
+    compareTask: {
+      title: 'ペア画像比較',
+      summary: '基準ソース {leftCount} 件 · 比較ソース {rightCount} 件 · ペア {pairCount} 組',
+      summaryEmpty: '左右それぞれに画像またはフォルダを追加すると、自動でペアのプレビューを作成します。',
+      actions: {
+        swap: '左右を入れ替え',
+        refresh: 'ペアを更新',
+        new: '新規比較',
+        start: '比較を開始',
+        resume: '比較を再開'
+      },
+      panels: {
+        baseline: '基準画像',
+        comparison: '比較画像',
+        hint: '画像またはフォルダをここにドロップできます'
+      },
+      buttons: {
+        selectImages: '画像を選択',
+        selectFolders: 'フォルダを選択',
+        recentFolder: '前回開いたフォルダ'
+      },
+      dialog: {
+        file: '画像を選択',
+        folder: 'フォルダを選択'
+      },
+      sourceType: {
+        file: 'ファイル',
+        folder: 'フォルダ'
+      },
+      sort: {
+        fields: {
+          name: '名前順',
+          lastModifyTime: '更新日時順',
+          size: 'サイズ順'
+        },
+        orders: {
+          asc: '昇順',
+          desc: '降順'
+        }
+      },
+      table: {
+        title: 'ペアプレビュー',
+        index: '番号',
+        baseline: '基準画像',
+        comparison: '比較画像',
+        status: '状態',
+        empty: 'プレビューできるペアはまだありません'
+      },
+      status: {
+        ready: 'ペア済み',
+        missingBaseline: '基準画像なし',
+        missingComparison: '比較画像なし'
+      },
+      placeholders: {
+        missingBaseline: '基準画像が見つかりません',
+        missingComparison: '比較画像が見つかりません'
+      },
+      confirm: {
+        title: '新規比較',
+        message: '現在のペア比較タスクをクリアします。続行しますか？'
+      },
+      messages: {
+        added: 'ソースを更新しました。',
+        refreshed: 'ペアを更新しました。',
+        cleared: '現在の比較タスクをクリアしました。',
+        swapped: '左右のソースを入れ替えました。',
+        noDroppedFiles: '使用可能なパスが見つかりませんでした。',
+        noSources: '先にソースを追加してください。',
+        duplicates: '{count} 件の重複ソースを無視しました。',
+        missing: '{count} 件の存在しないソースをスキップしました。',
+        invalid: '{count} 件の無効なパスを無視しました。',
+        unsupported: '{count} 件の未対応ソースを無視しました。',
+        nothingReady: '左右それぞれに少なくとも 1 枚の画像が必要です。'
+      },
+      warnings: {
+        staleTitle: 'ソースの変更を検出しました',
+        staleBody: 'このペア比較タスクは保存済みのファイル集合に固定されています。ソースを再走査して現在のペア位置を保つには、ペアを更新してください。',
+        staleToast: 'ソースの変更を検出しました。ディスクからこのタスクを再構築するには、ペアを更新してください。'
+      },
+      workspace: {
+        empty: '比較できるペアがありません。ダッシュボードに戻ってペア比較タスクを作成してください。',
+        returnToDashboard: 'タスクパネルに戻る',
+        prev: '前へ',
+        next: '次へ',
+        splitUnavailable: '現在のペアは不完全なため、分割比較は利用できません。',
+        modes: {
+          sideBySide: '並列表示',
+          single: '単一表示',
+          split: '分割'
+        },
+        placeholders: {
+          unmatchedBaseline: 'このペアには基準画像がありません',
+          unmatchedComparison: 'このペアには比較画像がありません'
+        }
+      }
+    },
     entries: {
       image: {
         title: '画像',
@@ -192,6 +288,7 @@ export default {
     frameSteps2: '一つ一つ比較する\n再生を再開します: Cmd/Ctrl + n',
     horizontalFlip: '左右に反転',
     fullsize: 'フルサイズ',
+    originalMode: '原寸モード',
     adaptive: '全体を見る',
     align: '整列（サイズは同じままです）',
     align2: '整列（同じサイズ）',

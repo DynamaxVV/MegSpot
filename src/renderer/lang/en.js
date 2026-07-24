@@ -96,6 +96,102 @@ export default {
     compare: "Drag and drop to compare two images"
   },
   dashboard: {
+    compareTask: {
+      title: 'Paired Image Compare',
+      summary: '{leftCount} baseline sources · {rightCount} comparison sources · {pairCount} pairs',
+      summaryEmpty: 'Add images or folders to both sides and MegSpot will rebuild the pair preview automatically.',
+      actions: {
+        swap: 'Swap Sides',
+        refresh: 'Refresh Pairs',
+        new: 'New Compare',
+        start: 'Start Compare',
+        resume: 'Resume Compare'
+      },
+      panels: {
+        baseline: 'Baseline',
+        comparison: 'Comparison',
+        hint: 'Drop images or folders here'
+      },
+      buttons: {
+        selectImages: 'Select Images',
+        selectFolders: 'Select Folder',
+        recentFolder: 'Last opened folder'
+      },
+      dialog: {
+        file: 'Select Images',
+        folder: 'Select Folder'
+      },
+      sourceType: {
+        file: 'File',
+        folder: 'Folder'
+      },
+      sort: {
+        fields: {
+          name: 'Sort by Name',
+          lastModifyTime: 'Sort by Modified Time',
+          size: 'Sort by Size'
+        },
+        orders: {
+          asc: 'Ascending',
+          desc: 'Descending'
+        }
+      },
+      table: {
+        title: 'Pair Preview',
+        index: 'Index',
+        baseline: 'Baseline',
+        comparison: 'Comparison',
+        status: 'Status',
+        empty: 'No pairs to preview yet'
+      },
+      status: {
+        ready: 'Paired',
+        missingBaseline: 'Missing Baseline',
+        missingComparison: 'Missing Comparison'
+      },
+      placeholders: {
+        missingBaseline: 'Baseline missing',
+        missingComparison: 'Comparison missing'
+      },
+      confirm: {
+        title: 'New Compare',
+        message: 'This will clear the current pair task. Continue?'
+      },
+      messages: {
+        added: 'Sources updated.',
+        refreshed: 'Pairs refreshed.',
+        cleared: 'Current compare task cleared.',
+        swapped: 'Sources swapped.',
+        noDroppedFiles: 'No usable paths were detected.',
+        noSources: 'Add sources first.',
+        duplicates: 'Ignored {count} duplicate source(s).',
+        missing: 'Skipped {count} missing source(s).',
+        invalid: 'Ignored {count} invalid path(s).',
+        unsupported: 'Ignored {count} unsupported source(s).',
+        nothingReady: 'Each side needs at least one image.'
+      },
+      warnings: {
+        staleTitle: 'Source changes detected',
+        staleBody: 'This pair task is frozen to its saved files. Refresh Pairs to rescan sources and keep the current pair aligned.',
+        staleToast: 'Source changes detected. Refresh Pairs to rebuild this task from disk.'
+      },
+      workspace: {
+        empty: 'There are no pairs to compare yet. Return to the dashboard to build a pair task first.',
+        returnToDashboard: 'Return to Dashboard',
+        prev: 'Previous',
+        next: 'Next',
+        splitUnavailable: 'Split compare is unavailable for the current unmatched pair.',
+        modes: {
+          sideBySide: 'Side by Side',
+          single: 'Single',
+          split: 'Split'
+        },
+        placeholders: {
+          unmatchedBaseline: 'This pair is missing a baseline image.',
+          unmatchedComparison: 'This pair is missing a comparison image.'
+        }
+      }
+    },
     entries: {
       image: {
         title: 'IMAGE',
@@ -196,6 +292,7 @@ export default {
     frameSteps2: 'Compare video frame by frame\nplay backward: Cmd/Ctrl + n',
     horizontalFlip: 'horizontal flip',
     fullsize: 'fullsize',
+    originalMode: 'Original mode',
     adaptive: 'adaptive',
     align: 'align(size not changes)',
     align2: 'align(same size)',

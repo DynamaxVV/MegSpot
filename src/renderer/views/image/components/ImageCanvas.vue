@@ -1,8 +1,13 @@
 <template>
-  <div :class="['image-canvas', { selected: selected }]" @click.stop>
+  <div :class="['image-canvas', { selected: selected, 'pair-task': pairTaskMode }]" @click.stop>
     <div ref="header" class="header" flex="cross:center">
       <CoverMask :mask="maskDom" class="cover-mask">
-        <HistContainer ref="hist-container" :index="index" @changeVisible="handleHistVisible" />
+        <HistContainer
+          ref="hist-container"
+          :index="index"
+          :initialVisible="pairTaskMode ? false : null"
+          @changeVisible="handleHistVisible"
+        />
       </CoverMask>
       <el-tooltip placement="bottom" :open-delay="800">
         <span class="compare-name" flex-box="1" v-html="getTitle"></span>
@@ -42,7 +47,7 @@
             :parentWidth="_width"
             :parentHeight="_height"
           />
-          <canvas ref="canvas" :width="_width" :height="_height"></canvas>
+          <canvas ref="canvas" :style="canvasSizeStyle"></canvas>
           <div v-if="triggerRGB || preference.showDot" ref="feedback" id="feedback" :style="feedbackStyle"></div>
           <div v-if="preference.showMousePos" v-show="mousePosInfo.x" class="mouse-position">
             <span>x={{ mousePosInfo.x.toFixed(2) }},y={{ mousePosInfo.y.toFixed(2) }}</span>
@@ -98,6 +103,14 @@ export default {
       type: String,
       default: ''
     },
+    pairTaskMode: {
+      type: Boolean,
+      default: false
+    },
+    displayName: {
+      type: String,
+      default: ''
+    },
     // name: {
     //   type: String,
     //   default: ''
@@ -131,6 +144,7 @@ export default {
       bitMap: null,
       imgMat: null,
       imgMatRequestId: null,
+      resizeRequestId: null,
       imagePosition: null,
       cachedPositionData: null,
       imgScale: 'N/A',
@@ -283,6 +297,18 @@ export default {
     },
     imgScaleNum() {
       return !isNaN(this.imgScale) ? Number(this.imgScale) : 0
+    },
+    devicePixelRatio() {
+      return window.devicePixelRatio || 1
+    },
+    renderPixelRatio() {
+      return this.imageConfig.displayMode === 'original' ? this.devicePixelRatio : 1
+    },
+    canvasSizeStyle() {
+      return {
+        width: `${this._width}px`,
+        height: `${this._height}px`
+      }
     }
   },
   async mounted() {
@@ -291,8 +317,14 @@ export default {
     this.initCanvas()
     this.initImage()
     this.listenEvents()
+    if (this.pairTaskMode) {
+      this.maskDom = null
+      this.$refs['hist-container'].setVisible(false)
+    }
   },
   beforeDestroy() {
+    this.closeWatcher()
+    window.cancelAnimationFrame(this.resizeRequestId)
     this.removeEvents()
     if (this.imgMat) {
       this.imgMat?.delete()
@@ -304,9 +336,7 @@ export default {
   watch: {
     path: {
       handler: function (newVal, oldVal) {
-        if (oldVal) {
-          this.wacther && this.wacther.close()
-        }
+        this.closeWatcher()
         if (newVal) {
           this.wacther = chokidar
             .watch(newVal, {
@@ -326,17 +356,34 @@ export default {
             })
             .on('unlink', (path, details) => {
               console.log('image--remove', path, details)
-              this.removeImages(path)
+              if (!this.pairTaskMode) {
+                this.removeImages(path)
+              }
             })
         }
       },
       immediate: true
+    },
+    _width() {
+      this.scheduleCanvasResize()
+    },
+    _height() {
+      this.scheduleCanvasResize()
     },
     'imageConfig.smooth': {
       handler(newVal, oldVal) {
         this.setSmooth()
       },
       immediate: true
+    },
+      'imageConfig.displayMode': {
+        handler() {
+          if (!this.ready) {
+            return
+          }
+          this.initCanvas()
+          this.drawImage()
+      }
     },
     'preference.showRGBText': {
       handler(newVal, oldVal) {
@@ -346,6 +393,22 @@ export default {
   },
   methods: {
     ...mapActions(['removeImages']),
+    closeWatcher() {
+      if (this.wacther) {
+        this.wacther.close()
+        this.wacther = null
+      }
+    },
+    scheduleCanvasResize() {
+      window.cancelAnimationFrame(this.resizeRequestId)
+      this.$nextTick(() => {
+        window.cancelAnimationFrame(this.resizeRequestId)
+        this.resizeRequestId = window.requestAnimationFrame(() => {
+          this.initCanvas()
+          this.ready && this.reDraw(true)
+        })
+      })
+    },
     // 检查边界， 保证图像至少部分在canvas内(显示大小至少为当前图像大小的DRAG_CONSTANTS)
     checkBorder(transX, transY, _width, _height) {
       const cw = this._width,
@@ -366,7 +429,7 @@ export default {
     },
     // 约束缩放，保证图像的宽(或高)不小于canvas宽(或高)的SCALE_CONSTANTS
     checkSize(transW, transH) {
-      let isTooSmall = transW < this.canvas.width * SCALE_CONSTANTS || transH < this.canvas.height * SCALE_CONSTANTS
+      let isTooSmall = transW < this._width * SCALE_CONSTANTS || transH < this._height * SCALE_CONSTANTS
       if (this.afterFullSize && !isTooSmall) {
         this.afterFullSize = false
       }
@@ -389,6 +452,9 @@ export default {
       }
     },
     getName(filter = true) {
+      if (this.pairTaskMode && this.displayName) {
+        return this.displayName
+      }
       return this.snapshotMode
         ? this.snapInfo.name
         : filter
@@ -462,6 +528,9 @@ export default {
       })
     },
     handleChangeHistTypes(config) {
+      if (this.pairTaskMode && !this.$refs['hist-container'].visible) {
+        return
+      }
       this.$cv?.Mat && this.initHist(false, config)
       this.$refs['hist-container'].setVisible(true)
     },
@@ -613,9 +682,14 @@ export default {
       })
     },
     initCanvas() {
+      if (this.canvas) {
+        this.canvas.width = Math.max(1, Math.round(this._width * this.renderPixelRatio))
+        this.canvas.height = Math.max(1, Math.round(this._height * this.renderPixelRatio))
+      }
       this.cs = this.canvas?.getContext('2d')
+      this.cs?.setTransform(this.renderPixelRatio, 0, 0, this.renderPixelRatio, 0, 0)
       this.$nextTick(() => {
-        this.cs.imageSmoothingEnabled = this.imageConfig.smooth
+        this.cs && (this.cs.imageSmoothingEnabled = this.imageConfig.smooth)
       })
     },
     // 供外部直接调用 待测试
@@ -629,7 +703,12 @@ export default {
         return null
       }
 
-      const pixel = this.cs.getImageData(x, y, 1, 1)
+      const pixel = this.cs.getImageData(
+        Math.floor(x * this.renderPixelRatio),
+        Math.floor(y * this.renderPixelRatio),
+        1,
+        1
+      )
       let [R, G, B, A] = pixel.data
       A = parseInt(A / 255)
       return {
@@ -705,7 +784,7 @@ export default {
     },
     async drawImage(img = null) {
       let { x, y, width, height } = this.imagePosition || this.getImageInitPos(this.canvas, this.image)
-      this.cs.clearRect(0, 0, this.canvas.width, this.canvas.height)
+      this.cs.clearRect(0, 0, this._width, this._height)
       this.cs.drawImage(img ?? this.bitMap, x, y, width, height)
       this.drawRGBText()
     },
@@ -808,8 +887,8 @@ export default {
     // 外部直接调用
     setCoverStatus({ snapShot, hist }, status) {
       if (status) {
-        this.cs.clearRect(0, 0, this.canvas.width, this.canvas.height)
-        this.cs.drawImage(snapShot, 0, 0)
+        this.cs.clearRect(0, 0, this._width, this._height)
+        this.cs.drawImage(snapShot, 0, 0, this._width, this._height)
         if (this.$refs['hist-container'].visible) {
           this.maskDom = hist
         }
@@ -830,6 +909,7 @@ export default {
         this.drawImage()
       } else {
         if (this.bitMap) {
+          this.afterFullSize = false
           this.imagePosition = this.getImageInitPos(this.canvas, this.bitMap)
           this.doZoomEnd()
           this.drawImage()
@@ -869,8 +949,8 @@ export default {
       return positionInfo
     },
     getImageInitPos(canvas, image) {
-      const cw = canvas.width
-      const ch = canvas.height
+      const cw = this._width
+      const ch = this._height
 
       const iw = image.width
       const ih = image.height
@@ -885,12 +965,12 @@ export default {
 
       if (canvasRadio > imageRadio) {
         //比较高，所以高占100%,宽居中
-        width = canvas.height * imageRadio
-        x = (canvas.width - width) / 2
+        width = ch * imageRadio
+        x = (cw - width) / 2
       } else {
         //比较宽，所以宽占100%,高居中
-        height = canvas.width / imageRadio
-        y = (canvas.height - height) / 2
+        height = cw / imageRadio
+        y = (ch - height) / 2
       }
       return {
         x,
@@ -914,8 +994,8 @@ export default {
     },
     // 判断图像是否占据整个canvas
     isFullFilled() {
-      const cw = this.canvas.width,
-        ch = this.canvas.height,
+      const cw = this._width,
+        ch = this._height,
         iw = this.imagePosition.width,
         ih = this.imagePosition.height
       const constantsW = DRAG_CONSTANTS * iw,
@@ -951,7 +1031,7 @@ export default {
       const oldScale = Number(this.imgScale)
       const scaleRatio = newScale / oldScale
       // 默认从画布中心放大
-      const position = { x: this.canvas.width / 2, y: this.canvas.height / 2 }
+      const position = { x: this._width / 2, y: this._height / 2 }
       // 画像不占据整个画布时，从画像中心放大
       // const isFullFilled = this.isFullFilled();
       // const position = isFullFilled
@@ -1166,6 +1246,30 @@ export default {
         color: rgba(0, 0, 0, 0.6);
       }
     }
+  }
+}
+
+.image-canvas.pair-task {
+  position: relative;
+  height: 100%;
+
+  .header {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 3;
+    background-color: rgba(246, 246, 246, 0.82);
+  }
+
+  .canvas-container,
+  ::v-deep .operation-container {
+    width: 100%;
+    height: 100%;
+  }
+
+  canvas {
+    display: block;
   }
 }
 </style>

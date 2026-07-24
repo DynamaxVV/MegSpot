@@ -1,7 +1,7 @@
 {
   "name": "MegSpot",
-  "version": "v2.2.12",
-  "author": "weiyajun <weiyajun@megvii.com>",
+  "version": "2.2.12-vv1.0.1",
+  "author": "vv<1072565839@qq.com> ;weiyajun <weiyajun@megvii.com>",
   "description": "A tool to improve the viewing of pictures and videos by researchers",
   "homepage": "https://github.com/MegEngine/MegSpot",
   "license": "Apache License Version 2.0",
@@ -44,8 +44,8 @@
     "appId": "org.megvii.megspot",
     "copyright": " Copyright (c) 2022 Megvii Inc. All rights reserved.",
     "releaseInfo": {
-      "releaseNotes": "一、性能优化：\n    1. 对图像预览列表启用懒加载，解决了文件过多时导致的卡顿问题",
-      "releaseDate": "2024.10.29"
+      "releaseNotes": "【2.2.12-vv1.0.1】\r\n1.修复首页多文件夹排序问题，修复分割模式的界面的显示问题\r\n2.图片对比页面新增空格回正功能以及双击调整单图片缩放功能\r\n3.新增高清模式",
+      "releaseDate": "2026.07.24"
     },
     "directories": {
       "output": "build"

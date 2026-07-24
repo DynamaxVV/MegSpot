@@ -179,6 +179,15 @@
               <svg-icon icon-class="fullsize" />
             </span>
           </el-button>
+          <el-button
+            type="text"
+            size="mini"
+            :class="{ 'original-mode-active': displayMode === 'original' }"
+            @click="toggleDisplayMode"
+            :title="$t('imageCenter.originalMode')"
+          >
+            {{ $t('imageCenter.originalMode') }}
+          </el-button>
         </el-button-group>
         <div class="gap layout-group">
           <el-select
@@ -278,6 +287,14 @@ export default {
         this.startIndex = Math.max(0, (this.groupNum - 1) * this.groupCount + this.offset)
         this.$bus.$emit('changeGroup', this.startIndex)
         this.groupNum = Math.floor(this.startIndex / this.groupCount)
+      }
+    },
+    displayMode: {
+      get() {
+        return this.imageConfig.displayMode || 'fit'
+      },
+      set(displayMode) {
+        this.setImageConfig({ displayMode })
       }
     }
   },
@@ -407,6 +424,9 @@ export default {
     },
     resetCanvas(data) {
       this.$bus.$emit('imageCenter_resetCanvas', { name: 'reset', data })
+    },
+    toggleDisplayMode() {
+      this.displayMode = this.displayMode === 'original' ? 'fit' : 'original'
     },
     overlay(direction) {
       this.$bus.$emit('setOverLay', {
@@ -573,5 +593,9 @@ export default {
       }
     }
   }
+}
+
+.original-mode-active {
+  color: #409eff !important;
 }
 </style>

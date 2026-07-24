@@ -26,20 +26,17 @@ router.beforeEach((to, from, next) => {
 })
 
 router.afterEach((to, from) => {
-  // 储存路由目标跳转
-  store.dispatch('preferenceStore/setLastRouterPath', to.path).then(() => {
-    trackEvent('page_view', {
-      category: 'change-view',
-      name: to.name || to.path,
-      view: to.fullPath,
-      from: from.fullPath
-    })
-
-    // clear tmp collections
-    if (!['image-compare', 'video-compare'].includes(to.name)) {
-      store.dispatch('imageStore/removeTmpCollection')
-      store.dispatch('videoStore/removeTmpCollection')
-    }
+  trackEvent('page_view', {
+    category: 'change-view',
+    name: to.name || to.path,
+    view: to.fullPath,
+    from: from.fullPath
   })
+
+  // clear tmp collections
+  if (!['image-compare', 'video-compare'].includes(to.name)) {
+    store.dispatch('imageStore/removeTmpCollection')
+    store.dispatch('videoStore/removeTmpCollection')
+  }
 })
 export default router

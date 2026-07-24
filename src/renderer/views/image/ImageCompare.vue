@@ -1,19 +1,23 @@
 <template>
-  <div class="image-center" flex="dir:top box:first">
-    <Toolbar v-show="!showCompare" v-bind:snapshotMode="snapshotMode"></Toolbar>
-    <Content v-show="!showCompare" v-bind:snapshotMode="snapshotMode" ref="content" class="content-container"></Content>
-    <ImageDragDropCompare
-      ref="imageDragCompareRef"
-      v-show="showCompare"
-      v-model="showCompare"
-      :isExternal="true"
-    ></ImageDragDropCompare>
+  <div class="image-center" :flex="isPairTask ? null : 'dir:top box:first'">
+    <PairCompareWorkspace v-if="isPairTask" />
+    <template v-else>
+      <Toolbar v-show="!showCompare" v-bind:snapshotMode="snapshotMode"></Toolbar>
+      <Content v-show="!showCompare" v-bind:snapshotMode="snapshotMode" ref="content" class="content-container"></Content>
+      <ImageDragDropCompare
+        ref="imageDragCompareRef"
+        v-show="showCompare"
+        v-model="showCompare"
+        :isExternal="true"
+      ></ImageDragDropCompare>
+    </template>
   </div>
 </template>
 
 <script>
 import Toolbar from './Toolbar'
 import Content from './Content'
+import PairCompareWorkspace from './PairCompareWorkspace'
 import ImageDragDropCompare from '../image/ImageDragDropCompare'
 import { useWorker } from '@/utils/worker'
 
@@ -22,6 +26,7 @@ export default {
   components: {
     Toolbar,
     Content,
+    PairCompareWorkspace,
     ImageDragDropCompare
   },
   data() {
@@ -30,6 +35,9 @@ export default {
     }
   },
   computed: {
+    isPairTask() {
+      return this.$route.query.pairTask === '1'
+    },
     snapshotMode() {
       return Boolean(this.$route.query.snapshotMode) || false
     }
@@ -48,7 +56,7 @@ export default {
   methods: {
     async initFiltersMap() {
       await useWorker('all', 'initFiltersMap')
-    },
+    }
   }
 }
 </script>

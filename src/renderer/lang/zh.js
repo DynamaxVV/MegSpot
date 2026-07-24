@@ -1,7 +1,7 @@
 export default {
   common: {
     supportTypes: '支持多种文件类型:',
-    desc: 'MegSpot是一款跨平台的本地应用，旨在为用户提供本地图片对比、视频对比、图片定制处理等便捷功能。\r\n可进入QQ交流群(782365536)了解详情、获取最新资讯。',
+    desc: '当前版本为小v魔改版，为图片审较场景做了大量适配优化。  \nMegSpot是一款跨平台的本地应用，旨在为用户提供本地图片对比、视频对比、图片定制处理等便捷功能。  \n可进入QQ交流群(782365536)了解详情、获取最新资讯（此为原项目发布者的交流群）。',
     manual: '使用手册',
     hotKey: '快捷键',
     please: '请',
@@ -95,6 +95,102 @@ export default {
     compare: "对两张图像进行拖拽对比"
   },
   dashboard: {
+    compareTask: {
+      title: '成对图片对比',
+      summary: '{leftCount} 个基准来源 · {rightCount} 个对比来源 · {pairCount} 组配对',
+      summaryEmpty: '分别为两侧添加图片或文件夹，系统会自动生成配对预览。',
+      actions: {
+        swap: '交换两侧',
+        refresh: '刷新配对',
+        new: '新建对比',
+        start: '开始对比',
+        resume: '继续对比'
+      },
+      panels: {
+        baseline: '基准图',
+        comparison: '对比图',
+        hint: '支持拖入图片或文件夹'
+      },
+      buttons: {
+        selectImages: '选择图片',
+        selectFolders: '选择文件夹',
+        recentFolder: '上次打开的文件夹'
+      },
+      dialog: {
+        file: '选择图片',
+        folder: '选择文件夹'
+      },
+      sourceType: {
+        file: '文件',
+        folder: '文件夹'
+      },
+      sort: {
+        fields: {
+          name: '按名称排序',
+          lastModifyTime: '按修改时间排序',
+          size: '按大小排序'
+        },
+        orders: {
+          asc: '升序',
+          desc: '降序'
+        }
+      },
+      table: {
+        title: '配对预览',
+        index: '序号',
+        baseline: '基准图',
+        comparison: '对比图',
+        status: '状态',
+        empty: '暂无可预览的配对'
+      },
+      status: {
+        ready: '已配对',
+        missingBaseline: '缺少基准图',
+        missingComparison: '缺少对比图'
+      },
+      placeholders: {
+        missingBaseline: '未找到基准图',
+        missingComparison: '未找到对比图'
+      },
+      confirm: {
+        title: '新建对比',
+        message: '当前配对任务将被清空，是否继续？'
+      },
+      messages: {
+        added: '来源已更新。',
+        refreshed: '已刷新配对。',
+        cleared: '已清空当前对比任务。',
+        swapped: '已交换两侧来源。',
+        noDroppedFiles: '未检测到可用路径。',
+        noSources: '请先添加来源。',
+        duplicates: '已忽略 {count} 个重复来源。',
+        missing: '已跳过 {count} 个不存在的来源。',
+        invalid: '已忽略 {count} 个无效路径。',
+        unsupported: '已忽略 {count} 个不支持的来源。',
+        nothingReady: '两侧至少各需要一张图片。'
+      },
+      warnings: {
+        staleTitle: '检测到来源变化',
+        staleBody: '当前配对任务已冻结在已保存的文件集合上。请使用“刷新配对”重新扫描来源，并尽量保持当前配对定位。',
+        staleToast: '检测到来源变化，请使用“刷新配对”从磁盘重新构建当前任务。'
+      },
+      workspace: {
+        empty: '当前没有可对比的配对，请先回到主页创建对比任务。',
+        returnToDashboard: '返回任务面板',
+        prev: '上一组',
+        next: '下一组',
+        splitUnavailable: '当前配对不完整，暂时无法使用分割对比。',
+        modes: {
+          sideBySide: '并排',
+          single: '单页',
+          split: '分割'
+        },
+        placeholders: {
+          unmatchedBaseline: '当前组缺少基准图',
+          unmatchedComparison: '当前组缺少对比图'
+        }
+      }
+    },
     entries: {
       image: {
         title: '图片对比',
@@ -195,6 +291,7 @@ export default {
     frameSteps1: '逐帧对比\n向前播放: Cmd/Ctrl + b',
     frameSteps2: '逐帧对比\n向后播放: Cmd/Ctrl + n',
     fullsize: '原图',
+    originalMode: '原图模式',
     adaptive: '自适应',
     align: '对齐(大小不变)',
     align2: '对齐(大小相同)',

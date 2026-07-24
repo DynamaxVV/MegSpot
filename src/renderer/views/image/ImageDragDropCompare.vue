@@ -1,6 +1,6 @@
 <template>
-  <div id="image-drag-drop-compare">
-    <div class="buttons" flex="main:justify cross:center">
+  <div id="image-drag-drop-compare" :class="{ embedded }">
+    <div v-if="!embedded" class="buttons" flex="main:justify cross:center">
       <div class="changeButton">
         <div class="router-back" :title="`${$t('common.hotKey')}：esc`">
           <span @click="goBack" class="btn">
@@ -10,7 +10,7 @@
         </div>
         <SelectedBtn
           :selectedList="imageList"
-          :focusList="this.selectedList"
+          :focusList="selectedList"
           @update="setImages"
           @remove="removeImages"
           @click="emptyImages"
@@ -42,7 +42,7 @@
           v-show="showName1 && status"
           id="name1"
           class="image-name"
-          :style="`top: ${canvasPosition.top + 20}px; left: 20px;`"
+          :style="`top: 20px; left: 20px;`"
         >
           {{ image1Name }}
         </div>
@@ -53,7 +53,7 @@
           id="name2"
           class="image-name"
           :style="
-            direction === 'horizontal' ? `top: ${canvasPosition.top + 20}px; right: 20px;` : 'bottom: 20px; left: 20px;'
+            direction === 'horizontal' ? 'top: 20px; right: 20px;' : 'bottom: 20px; left: 20px;'
           "
         >
           {{ image2Name }}
@@ -90,6 +90,11 @@ export default {
       default: false
     },
     isExternal: {
+      type: Boolean,
+      required: false,
+      default: false
+    },
+    embedded: {
       type: Boolean,
       required: false,
       default: false
@@ -137,26 +142,38 @@ export default {
   },
   computed: {
     ...mapGetters({
-      _imageList: 'imageList'
+      _imageList: 'imageList',
+      imageConfig: 'imageConfig'
     }),
     imageList() {
       return this.imageInfoList ? this.imageInfoList.map((i) => i.imageUrl) : this._imageList
+    },
+    devicePixelRatio() {
+      return window.devicePixelRatio || 1
+    },
+    renderPixelRatio() {
+      return this.imageConfig.displayMode === 'original' ? this.devicePixelRatio : 1
     }
   },
   watch: {
-    imageList(newVal, oldVal = []) {
+    imageList() {
       this.imageLengthCheck()
+    },
+    'imageConfig.displayMode'() {
+      if (this.canvas && this.imagePosition.width) {
+        this.initCanvas()
+        this.drawImage()
+      }
     }
   },
   mounted() {
-    console.log('mounted', this.$router, this.$route)
     window.addEventListener('resize', this.resize, true)
     window.addEventListener('keydown', this.handleHotKey, true)
-    this.content = document.getElementsByClassName('canvas')[0]
-    this.line1 = document.getElementById('line1')
-    this.line2 = document.getElementById('line2')
-    this.hoverLine1 = document.getElementById('line1-hover')
-    this.hoverLine2 = document.getElementById('line2-hover')
+    this.content = this.$el.querySelector('.canvas')
+    this.line1 = this.$el.querySelector('#line1')
+    this.line2 = this.$el.querySelector('#line2')
+    this.hoverLine1 = this.$el.querySelector('#line1-hover')
+    this.hoverLine2 = this.$el.querySelector('#line2-hover')
     this.hoverLine = this.hoverLine1
     this.line = this.line1
     this.init()
@@ -176,7 +193,7 @@ export default {
     }),
     init() {
       this.imgScale = 1
-      this.canvas = document.getElementById('canvas')
+      this.canvas = this.$el.querySelector('#canvas')
       this.cs = this.canvas.getContext('2d')
       !this.isExternal && this.imageLengthCheck()
       this.addEvents()
@@ -190,15 +207,44 @@ export default {
       this.imageInfoList = imageInfoList
       this.imageLengthCheck()
     },
+    refreshLayout() {
+      if (!this.canvas || !this.content) {
+        return
+      }
+      this.initCanvas()
+      this.initLine()
+      if (!this.image2 || !this.image2.width) {
+        return
+      }
+      this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
+      this.drawImage()
+    },
+    reset() {
+      if (!this.canvas || !this.image2) {
+        return
+      }
+      this.imgScale = 1
+      this.initCanvas()
+      this.initLine()
+      this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
+      this.drawImage()
+    },
     initCanvas() {
-      this.canvas.width = document.body.clientWidth
-      this.canvas.height = document.body.clientHeight
+      const rect = this.content ? this.content.getBoundingClientRect() : document.body.getBoundingClientRect()
+      const width = rect.width || document.body.clientWidth
+      const height = rect.height || document.body.clientHeight
+      this.canvas.style.width = `${width}px`
+      this.canvas.style.height = `${height}px`
+      this.canvas.width = Math.max(1, Math.round(width * this.renderPixelRatio))
+      this.canvas.height = Math.max(1, Math.round(height * this.renderPixelRatio))
+      this.cs = this.canvas.getContext('2d')
+      this.cs.setTransform(this.renderPixelRatio, 0, 0, this.renderPixelRatio, 0, 0)
       this.canvasPosition = this.canvas.getBoundingClientRect() //canvas可能距离左上角的距离不是0
     },
     //获取图片初次加载时自适应后的值
     getImageInitPos(canvas, image) {
-      const cw = canvas.width
-      const ch = canvas.height
+      const cw = canvas.clientWidth
+      const ch = canvas.clientHeight
       const iw = image.width
       const ih = image.height
       const canvasRadio = cw / ch
@@ -211,14 +257,14 @@ export default {
       let heightScaleRatio = ih / ch
       if (canvasRadio > imageRadio) {
         //比较高，所以高占100%,宽居中
-        width = canvas.height * imageRadio
-        x = (canvas.width - width) / 2
+        width = ch * imageRadio
+        x = (cw - width) / 2
         this.initHeight = ih / heightScaleRatio
         this.initWidth = width
       } else {
         //比较宽，所以宽占100%,高居中
-        height = canvas.width / imageRadio
-        y = (canvas.height - height) / 2
+        height = cw / imageRadio
+        y = (ch - height) / 2
         this.initWidth = iw / widthScaleRatio
         this.initHeight = height
       }
@@ -250,17 +296,17 @@ export default {
     initLine() {
       this.hoverWidth = Number(window.getComputedStyle(this.hoverLine1).width.slice(0, -2))
 
-      this.hoverLine1.style.height = this.canvas.height + 'px'
-      this.hoverLine1.style.left = this.canvas.width / 2 + this.canvasPosition.left - this.hoverWidth / 2 + 'px'
-      this.line1.style.height = this.canvas.height + 'px'
-      this.line2.style.width = this.canvas.width + 'px'
-      this.leftDis = this.canvas.width / 2
+      this.hoverLine1.style.height = this.canvas.clientHeight + 'px'
+      this.hoverLine1.style.left = this.canvas.clientWidth / 2 - this.hoverWidth / 2 + 'px'
+      this.line1.style.height = this.canvas.clientHeight + 'px'
+      this.line2.style.width = this.canvas.clientWidth + 'px'
+      this.leftDis = this.canvas.clientWidth / 2
       this.line1.style.left = this.hoverWidth / 2 + 'px'
 
       this.hoverHight = Number(window.getComputedStyle(this.hoverLine2).height.slice(0, -2))
-      this.hoverLine2.style.width = this.canvas.width + 'px'
-      this.hoverLine2.style.top = this.canvas.height / 2 + this.canvasPosition.top - this.hoverHight / 2 + 'px'
-      this.topDis = this.canvas.height / 2 + this.canvasPosition.top
+      this.hoverLine2.style.width = this.canvas.clientWidth + 'px'
+      this.hoverLine2.style.top = this.canvas.clientHeight / 2 - this.hoverHight / 2 + 'px'
+      this.topDis = this.canvas.clientHeight / 2
       this.line2.style.top = this.hoverHight / 2 + 'px'
     },
     //初始化图片
@@ -295,11 +341,10 @@ export default {
       this.image2.src = imgSrc2
     },
     initNameDicRect() {
-      const name1Div = document.getElementById('name1')
-      this.name1Rect = name1Div.getBoundingClientRect()
-
-      const name2Div = document.getElementById('name2')
-      this.name2Rect = name2Div.getBoundingClientRect()
+      const name1Div = this.$el.querySelector('#name1')
+      const name2Div = this.$el.querySelector('#name2')
+      this.name1Rect = name1Div ? name1Div.getBoundingClientRect() : null
+      this.name2Rect = name2Div ? name2Div.getBoundingClientRect() : null
     },
     //添加事件
     addEvents() {
@@ -404,9 +449,9 @@ export default {
     //缩放
     zoom(mousex, mousey, delta) {
       if (this.flag) {
-        mousey = this.topDis - this.canvasPosition.top
+        mousey = this.topDis
       } else {
-        mousex = this.leftDis - this.canvasPosition.left
+        mousex = this.leftDis
       }
 
       let factor = 1 + 0.1 * delta
@@ -426,21 +471,20 @@ export default {
     //限制线的出界范围
     limitLine() {
       //计算canvas的范围
-      let canvasLeft = this.canvasPosition.left
-      let canvaseRight = this.canvasPosition.left + this.canvasPosition.width
-      let canvasTop = this.canvasPosition.top
-      let canvasBottom = this.canvasPosition.top + this.canvasPosition.height
+      let canvasLeft = 0
+      let canvaseRight = this.canvas.clientWidth
+      let canvasTop = 0
+      let canvasBottom = this.canvas.clientHeight
       //计算hover层的范围
       let hoverLeft = canvasLeft - this.hoverWidth / 2
       let hoverRight = canvaseRight + this.hoverWidth / 2
       let hoverTop = canvasTop - this.hoverHight / 2
       let hoverBottom = canvasBottom + this.hoverHight / 2
       //计算线的范围
-      let left = this.imagePosition.x + this.canvasPosition.left - this.hoverWidth / 2
-      let right = this.imagePosition.x + this.canvasPosition.left + this.initWidth * this.imgScale - this.hoverWidth / 2
-      let top = this.imagePosition.y + this.canvasPosition.top - this.hoverHight / 2
-      let bottom =
-        this.imagePosition.y + this.canvasPosition.top + this.initHeight * this.imgScale - this.hoverHight / 2
+      let left = this.imagePosition.x - this.hoverWidth / 2
+      let right = this.imagePosition.x + this.initWidth * this.imgScale - this.hoverWidth / 2
+      let top = this.imagePosition.y - this.hoverHight / 2
+      let bottom = this.imagePosition.y + this.initHeight * this.imgScale - this.hoverHight / 2
 
       //限制线在canvas的范围内
       if (top < hoverTop) {
@@ -492,7 +536,8 @@ export default {
     },
     // 判断是否在画布范围内
     isDivArea(point) {
-      if (point.x < 0 || point.x > this.canvas.width || point.y < 0 || point.y > this.canvas.height) {
+      const { left, right, top, bottom } = this.canvasPosition
+      if (point.x < left || point.x > right || point.y < top || point.y > bottom) {
         return false
       }
       return true
@@ -509,7 +554,7 @@ export default {
       let { x, y, width, height } = this.imagePosition
       let { cutLeft, cutHeight, useLeft, useHeight } = this.getImageParams()
       //清空画布再重新画图
-      this.cs.clearRect(0, 0, canvas.width, canvas.height) //在给定的矩形内清除指定的像素
+      this.cs.clearRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight) //在给定的矩形内清除指定的像素
       this.cs.drawImage(
         this.imageBitMap2,
         x, //x
@@ -540,22 +585,24 @@ export default {
       if (!this.name1Rect || !this.name2Rect) {
         this.initNameDicRect()
       }
+      const name1Rect = this.name1Rect || { right: 0, bottom: 0 }
+      const name2Rect = this.name2Rect || { left: Number.MAX_SAFE_INTEGER, top: Number.MAX_SAFE_INTEGER }
       if (this.flag) {
         //计算当前分割线相对于image的比例，并计算出相对于画布的高度。
-        let scale = (this.topDis - this.imagePosition.y - this.canvasPosition.top) / (this.initHeight * this.imgScale)
+        let scale = (this.topDis - this.imagePosition.y) / (this.initHeight * this.imgScale)
         cutHeight = scale * this.image1.height
         useHeight = scale * this.initHeight * this.imgScale
 
-        this.showName1 = useHeight + this.imagePosition.y + this.canvasPosition.top >= this.name1Rect.bottom
-        this.showName2 = useHeight + this.imagePosition.y + this.canvasPosition.top <= this.name2Rect.top
+        this.showName1 = useHeight + this.imagePosition.y + this.canvasPosition.top >= name1Rect.bottom
+        this.showName2 = useHeight + this.imagePosition.y + this.canvasPosition.top <= name2Rect.top
       } else {
         //计算当前分割线相对于image的比例，并计算出相对于画布的宽度。
-        let scale = (this.leftDis - this.imagePosition.x - this.canvasPosition.left) / (this.initWidth * this.imgScale)
+        let scale = (this.leftDis - this.imagePosition.x) / (this.initWidth * this.imgScale)
         cutLeft = scale * this.image1.width
         useLeft = scale * this.initWidth * this.imgScale
 
-        this.showName1 = useLeft + this.imagePosition.x + this.canvasPosition.left >= this.name1Rect.right
-        this.showName2 = useLeft + this.imagePosition.x + this.canvasPosition.left <= this.name2Rect.left
+        this.showName1 = useLeft + this.imagePosition.x + this.canvasPosition.left >= name1Rect.right
+        this.showName2 = useLeft + this.imagePosition.x + this.canvasPosition.left <= name2Rect.left
       }
       return {
         cutLeft,
@@ -608,7 +655,7 @@ export default {
       }
     },
     handleHotKey(event) {
-      if (!this.$parent.showCompare) {
+      if (this.embedded || !this.$parent.showCompare) {
         return
       }
       // esc
@@ -631,6 +678,16 @@ export default {
 @import '@/styles/variables.scss';
 @import '@/styles/public.scss';
 #image-drag-drop-compare {
+  height: 100%;
+
+  &.embedded {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+  }
+
   .changeButton {
     .tool-item {
       margin-left: 10px;
@@ -649,6 +706,12 @@ export default {
   }
 
   .canvas {
+    flex: 1;
+    height: auto;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+
     .image-name {
       position: absolute;
       background-color: rgba(0, 0, 0, 0.7);

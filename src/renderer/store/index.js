@@ -41,6 +41,7 @@ const checkHotkeysStore = () => {
 const { imageStore = {}, videoStore = {}, preferenceStore } = store.state
 const { imageFolders = [], imageList = [] } = imageStore
 const { videoFolders = [], videoList = [] } = videoStore
+store.dispatch('imageStore/clearCompareTask')
 checkStore(imageFolders, 'imageStore/removeImageFolders')
 checkStore(imageList, 'imageStore/removeImages')
 checkStore(videoFolders, 'videoStore/removeVideoFolders')

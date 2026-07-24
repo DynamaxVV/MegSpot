@@ -57,6 +57,10 @@ export default {
     index: {
       type: Number,
       default: 0
+    },
+    initialVisible: {
+      type: Boolean,
+      default: null
     }
   },
   data() {
@@ -100,7 +104,7 @@ export default {
   },
   created() {
     this.resetHists()
-    this.visible = this.preference.defaultShowHist
+    this.visible = this.initialVisible === null ? this.preference.defaultShowHist : this.initialVisible
   },
   mounted() {
     this.hist = this.$refs.hist
