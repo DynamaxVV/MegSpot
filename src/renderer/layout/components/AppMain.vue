@@ -1,7 +1,7 @@
 <template>
   <section class="app-main">
     <transition name="fade" mode="out-in">
-      <keep-alive include="VideoRoot,ImageRoot,ViewerRoot">
+      <keep-alive include="VideoRoot,ImageRoot">
         <router-view />
       </keep-alive>
     </transition>

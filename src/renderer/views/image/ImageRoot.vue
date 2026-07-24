@@ -100,6 +100,7 @@ import { SnapshotHelper } from '@/tools/compress'
 import { createNamespacedHelpers } from 'vuex'
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
 import addDragFolderListener from '@/utils/dragFolder.js'
+import { imageCache } from '@/utils/imageCache'
 import { handleEvent } from '@/tools/hotkey'
 
 export default {
@@ -125,6 +126,10 @@ export default {
   },
   deactivated() {
     window.removeEventListener('keydown', this.handleHotKey, true)
+    // Release heavy renderer memory when navigating away
+    imageCache.clear()
+    imageCache.clearPreloadPool()
+    this.$refs.ImagePreview?.cleanup()
   },
   methods: {
     ...mapActions([
@@ -187,6 +192,7 @@ export default {
         })
     },
     onClose(data) {
+      this.removeExpandData(data.path)
       const index = this.imageFolders.findIndex((item) => {
         return item === data.path
       })

@@ -55,6 +55,7 @@ export default {
       canvasWidth: 0,
       canvasHeight: 0,
       groupStartIndex: 0,
+      _compareBlobUrls: [],
       scheduleCanvasActions: [
         {
           event: 'setOverLay',
@@ -131,6 +132,8 @@ export default {
     this.scheduleCanvasActions.forEach((item) => {
       this.$bus.$off(item.event, this[item.action])
     })
+    this._compareBlobUrls.forEach((url) => URL.revokeObjectURL(url))
+    this._compareBlobUrls = []
     window.removeEventListener('resize', this.handleResize, true)
   },
   computed: {
@@ -460,6 +463,7 @@ export default {
             shareCanvas.path = path
             const imageBlob = await canvas.initImage()
             shareCanvas.imageUrl = URL.createObjectURL(imageBlob)
+            this._compareBlobUrls.push(shareCanvas.imageUrl)
             if (shareCanvas.displayTimestamp > 0 && shareCanvas.displayedFrames > 0) {
               shareCanvas.name =
                 canvas.getName(false) + `.png — ${shareCanvas.displayTimestamp}s(${shareCanvas.displayedFrames})`

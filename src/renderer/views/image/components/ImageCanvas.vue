@@ -69,6 +69,7 @@ import { createNamespacedHelpers } from 'vuex'
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
 const { mapGetters: preferenceMapGetters } = createNamespacedHelpers('preferenceStore')
 import { getImageUrlSyncNoCache } from '@/utils/image'
+import { imageCache } from '@/utils/imageCache'
 import { getOverlapRect } from '@/utils/canvas'
 import { throttle, debounce } from '@/utils'
 import { SCALE_CONSTANTS, DRAG_CONSTANTS } from '@/constants'
@@ -323,6 +324,7 @@ export default {
     }
   },
   beforeDestroy() {
+    this._destroyed = true
     this.closeWatcher()
     window.cancelAnimationFrame(this.resizeRequestId)
     this.removeEvents()
@@ -331,6 +333,12 @@ export default {
       this.imgMat = null
     }
     this.bitMap && this.bitMap?.close()
+    // Force release GPU backing store for the canvas
+    if (this.canvas) {
+      this.canvas.width = 0
+      this.canvas.height = 0
+    }
+    this.image = null
     this.initFilters()
   },
   watch: {
@@ -550,20 +558,40 @@ export default {
         this.imgMatRequestId = requestAnimationFrame(this.initImageMat)
       }
     },
+    ensureImageMat() {
+      if (!this.imgMat && this.$cv?.Mat && this.image?.width) {
+        this.imgMat = this.$cv.imread(this.image)
+      }
+      return this.imgMat
+    },
     async initBitMap(_imageData) {
       return new Promise(async (resolve) => {
         if (this.bitMap) {
           this.bitMap?.close()
           this.bitMap = null
         }
+        const filterParams = this.$refs['effect-settings'].generateFilterParams({})
+        const needsFilter = !this._isFilterNoOp(filterParams)
+
+        if (!needsFilter) {
+          // Skip Worker round-trip — filters are at default no-op values
+          this.bitMap = await createImageBitmap(this.image)
+          resolve(this.bitMap)
+          return
+        }
+
         const imageData = _imageData
           ? new ImageData(new Uint8ClampedArray(_imageData), this.image.width, this.image.height, {
               colorSpace: 'srgb'
             })
           : this.getImageData()
         this.bitMap = await createImageBitmap(imageData)
-        useWorker(this.getName(false), 'all', imageData, this.$refs['effect-settings'].generateFilterParams({})).then(
+        useWorker(this.getName(false), 'all', imageData, filterParams).then(
           (res) => {
+            if (this._destroyed) {
+              res?.close()
+              return
+            }
             this.bitMap && this.bitMap?.close()
             this.bitMap = null
             this.bitMap = res
@@ -573,12 +601,22 @@ export default {
         resolve(this.bitMap)
       })
     },
+    _isFilterNoOp({ gamma, inputShadow, inputHighlight, inputMidtones, outputShadow, outputHighlight }) {
+      return gamma === 1 &&
+        inputShadow === 0 && inputHighlight === 255 &&
+        outputShadow === 0 && outputHighlight === 255 &&
+        inputMidtones === 1
+    },
     applyFilters(type, params) {
       if (!this.ready) {
         return
       }
       const imageData = this.getImageData()
       useWorker(this.getName(false), type, imageData, params).then((res) => {
+        if (this._destroyed) {
+          res?.close()
+          return
+        }
         this.bitMap && this.bitMap?.close()
         this.bitMap = res
         this.drawImage()
@@ -662,22 +700,31 @@ export default {
           const imageData = toRGBA8(ifd)
           this.image = new Image(ifd.width, ifd.height)
           await this.initBitMap(imageData)
-          this.initImageMat()
           this.loading = false
           this.ready = true
           this.reDraw(initPosition)
           resolve()
         } else {
-          this.image = new Image()
-          this.image.onload = async () => {
+          const url = await this.resolvePath()
+          const preloaded = imageCache.takePreloaded(url)
+          if (preloaded && preloaded.loaded) {
+            this.image = preloaded.img
             await this.initBitMap()
-            this.initImageMat()
             this.loading = false
             this.ready = true
             this.reDraw(initPosition)
             resolve()
+          } else {
+            this.image = new Image()
+            this.image.onload = async () => {
+              await this.initBitMap()
+              this.loading = false
+              this.ready = true
+              this.reDraw(initPosition)
+              resolve()
+            }
+            this.image.src = url
           }
-          this.image.src = await this.resolvePath()
         }
       })
     },
@@ -721,7 +768,7 @@ export default {
     },
     async drawRGBText() {
       const cv = this.$cv
-      if (this.preference.showRGBText && cv && this.imgMat && this.imagePosition && this.image && this.cs && this.imgScaleNum >= 42) {
+      if (this.preference.showRGBText && cv && this.ensureImageMat() && this.imagePosition && this.image && this.cs && this.imgScaleNum >= 42) {
         if (this.drawRGBTextReqId) {
           cancelAnimationFrame(this.drawRGBTextReqId)
           this.drawRGBTextReqId = null

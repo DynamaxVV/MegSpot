@@ -16,6 +16,15 @@ export class SnapshotHelper {
   zipInstance
   validator
   constructor() {}
+  // Revoke blob URLs created during decompress
+  static cleanupFiles(files) {
+    if (!files || !files.length) return
+    files.forEach((file) => {
+      if (file.path && file.path.startsWith('blob:')) {
+        URL.revokeObjectURL(file.path)
+      }
+    })
+  }
   // 保存为MegSpot快照文件
   async save(config, files) {
     if (!this.zipInstance) {

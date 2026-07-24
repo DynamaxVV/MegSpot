@@ -24,8 +24,17 @@ import VueLazyload from 'vue-lazyload'
 
 import { initEventBus } from '@/utils/bus'
 import { initAnalyze } from '@/utils/analyze'
+import { imageCache } from '@/utils/imageCache'
 
-Vue.use(VueLazyload)
+Vue.use(VueLazyload, {
+  attempt: 1,
+  throttleWait: 50,
+  listener: {
+    loaded: (entry) => {
+      imageCache.register(entry.el, entry.src)
+    }
+  }
+})
 Vue.use(VXETable)
 Vue.use(VueSplit)
 Vue.use(VueScroll)

@@ -176,24 +176,34 @@ export default {
       return this.currentPath + DELIMITER + SORTING_FILE_NAME
     }
   },
-  async mounted() {
-    window.addEventListener('resize', debounce(300, this.updateTableHeight))
-    window.addEventListener('keydown', (code) => {
-      // 开启多选
+  created() {
+    this._debouncedResize = debounce(300, this.updateTableHeight)
+    this._handleShiftDown = (code) => {
       if (code.keyCode === 16 && code.shiftKey) {
         this.pin = true
       }
-    })
-    window.addEventListener('keyup', (code) => {
-      // 关闭多选
+    }
+    this._handleShiftUp = (code) => {
       if (code.keyCode === 16) {
         this.pin = false
       }
-    })
+    }
+  },
+  async mounted() {
     this.$bus.$on('applySortFile', this.applySortFile)
     this.$nextTick(() => {
       this.updateTableHeight()
     })
+  },
+  activated() {
+    window.addEventListener('resize', this._debouncedResize)
+    window.addEventListener('keydown', this._handleShiftDown)
+    window.addEventListener('keyup', this._handleShiftUp)
+  },
+  deactivated() {
+    window.removeEventListener('resize', this._debouncedResize)
+    window.removeEventListener('keydown', this._handleShiftDown)
+    window.removeEventListener('keyup', this._handleShiftUp)
   },
   updated() {
     // 打开同步选中

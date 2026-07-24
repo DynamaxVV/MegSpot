@@ -340,8 +340,27 @@ export default {
     window.addEventListener('resize', this.handleResize, true)
   },
   beforeDestroy() {
-    window.removeEventListener('keyup', this.handleHotKey, true)
+    window.removeEventListener('keydown', this.handleHotKey, true)
     window.removeEventListener('resize', this.handleResize, true)
+    if (this.sourceMat) {
+      this.sourceMat.delete()
+      this.sourceMat = null
+    }
+    if (this.currentMat) {
+      this.currentMat.delete()
+      this.currentMat = null
+    }
+    // Release GPU canvas backing stores
+    const canvasDom = this.$refs.canvasDom
+    if (canvasDom) {
+      canvasDom.width = 0
+      canvasDom.height = 0
+    }
+    const histCanvas = this.$refs.hist
+    if (histCanvas) {
+      histCanvas.width = 0
+      histCanvas.height = 0
+    }
   },
   methods: {
     ...mapActions(['removeImages', 'emptyImages', 'setImages']),

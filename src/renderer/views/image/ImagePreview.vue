@@ -63,7 +63,7 @@
       ></FileTable>
     </div>
     <div flex-box="1" class="preview-content" v-show="showType === 'thumbnail'">
-      <div class="image-content">
+      <div class="image-content" :key="thumbnailKey">
         <Thumbnail
           v-for="item in thumbnailList"
           :key="item.path"
@@ -87,6 +87,7 @@ const { shell } = require('electron')
 import { i18nRender } from '@/lang'
 import { isDirectory, isExist } from '@/utils/file'
 import { isImage } from '@/components/file-tree/lib/util'
+import { imageCache } from '@/utils/imageCache'
 import Thumbnail from '@/components/thumbnail/Thumbnail.vue'
 import FileTable from '@/components/file-table'
 import FilePathInput from '@/components/file-path-input'
@@ -108,11 +109,18 @@ export default {
       showType: 'list',
       showAll: false,
       btnDisabled: true,
-      thumbnailList: []
+      thumbnailList: [],
+      thumbnailKey: 0
     }
   },
   mounted() {
     this.showType = this.defaultFileListShowType
+  },
+  deactivated() {
+    this.cleanup()
+  },
+  beforeDestroy() {
+    imageCache.clear()
   },
   computed: {
     ...preferenceMapGetters(['preference']),
@@ -145,6 +153,11 @@ export default {
   },
   methods: {
     ...mapActions(['addImages', 'removeImages', 'emptyImages', 'setFolderPath', 'setImageFolders', 'setImageConfig']),
+    cleanup() {
+      imageCache.clear()
+      this.thumbnailList = []
+      this.thumbnailKey++
+    },
     handleGetSortData(data, callback) {
       callback(this.$refs.fileTable.getSortData())
     },
@@ -196,6 +209,20 @@ export default {
   watch: {
     defaultFileListShowType(newVal) {
       this.showType = newVal
+    },
+    imageList: {
+      handler(newVal, oldVal) {
+        if (oldVal && oldVal.length > 0 && newVal.length === 0) {
+          imageCache.clear()
+          this.thumbnailKey++
+        }
+      },
+      immediate: false
+    },
+    showType(newVal, oldVal) {
+      if (newVal === 'list' && oldVal === 'thumbnail') {
+        imageCache.clear()
+      }
     }
   }
 }

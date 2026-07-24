@@ -33,6 +33,8 @@ import ImageCanvas from './components/ImageCanvas'
 import store from '@/store'
 import { debounce } from '@/utils'
 import { getDirectoryPath } from '@/utils/file'
+import { getImageUrlSyncNoCache } from '@/utils/image'
+import { imageCache } from '@/utils/imageCache'
 import { SnapshotHelper } from '@/tools/compress'
 import * as GLOBAL_CONSTANTS from '@/constants'
 import { createNamespacedHelpers } from 'vuex'
@@ -53,6 +55,7 @@ export default {
       canvasWidth: 0,
       canvasHeight: 0,
       groupStartIndex: 0,
+      _compareBlobUrls: [],
       scheduleCanvasActions: [
         {
           event: 'setOverLay',
@@ -125,12 +128,18 @@ export default {
     })
     // resize 后重新计算宽高并渲染
     window.addEventListener('resize', this.handleResize, true)
+    this.preloadNearbyGroups()
   },
   beforeDestroy() {
     this.scheduleCanvasActions.forEach((item) => {
       this.$bus.$off(item.event, this[item.action])
     })
+    this._compareBlobUrls.forEach((url) => URL.revokeObjectURL(url))
+    this._compareBlobUrls = []
+    window.removeEventListener('resize', this.handleResize, true)
+    SnapshotHelper.cleanupFiles(this.files)
     store.dispatch('imageSnapshotStore/setFiles', [])
+    imageCache.clearPreloadPool()
   },
   computed: {
     ...mapGetters(['imageList', 'imageConfig']),
@@ -233,6 +242,30 @@ export default {
     // 接收改变当前图片分组的开始序号
     changeGroup(groupStartIndex) {
       this.groupStartIndex = groupStartIndex
+      this.preloadNearbyGroups()
+    },
+    getNearbyGroupPaths() {
+      const total = this.imageList.length
+      if (!total || !this.groupCount) return []
+      const start = this.groupStartIndex
+      const size = this.groupCount
+      // Prev 1 group + next 1 group
+      const ranges = []
+      // Prev 1
+      if (start - size >= 0) ranges.push([start - size, size])
+      // Next 1
+      const nextStart = start + size
+      if (nextStart < total) {
+        const count = Math.min(size, total - nextStart)
+        ranges.push([nextStart, count])
+      }
+      return ranges.flatMap(([s, c]) => this.imageList.slice(s, s + c))
+    },
+    preloadNearbyGroups() {
+      if (this.snapshotMode) return
+      const paths = this.getNearbyGroupPaths()
+      const urls = paths.map((p) => getImageUrlSyncNoCache(p))
+      imageCache.setPreloadWindow(urls)
     },
     ...mapActions(['setImageConfig']),
     ...snapMapActions(['setSnapshotConfig']),
@@ -313,6 +346,7 @@ export default {
             shareCanvas.path = path
             const imageBlob = await this.imageToBlob(image)
             shareCanvas.imageUrl = URL.createObjectURL(imageBlob)
+            this._compareBlobUrls.push(shareCanvas.imageUrl)
             shareCanvas.name = canvas.getName(false)
             return shareCanvas
           })

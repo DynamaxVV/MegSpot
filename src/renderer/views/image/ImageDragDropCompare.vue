@@ -164,6 +164,20 @@ export default {
         this.initCanvas()
         this.drawImage()
       }
+    },
+    showCompare(val) {
+      if (!val && this.isExternal) {
+        if (this.imageBitMap1) {
+          this.imageBitMap1.close()
+          this.imageBitMap1 = null
+        }
+        if (this.imageBitMap2) {
+          this.imageBitMap2.close()
+          this.imageBitMap2 = null
+        }
+        this.image1 = null
+        this.image2 = null
+      }
     }
   },
   mounted() {
@@ -181,6 +195,21 @@ export default {
   beforeDestroy() {
     window.removeEventListener('keydown', this.handleHotKey, true)
     window.removeEventListener('resize', this.resize, true)
+    if (this.imageBitMap1) {
+      this.imageBitMap1.close()
+      this.imageBitMap1 = null
+    }
+    if (this.imageBitMap2) {
+      this.imageBitMap2.close()
+      this.imageBitMap2 = null
+    }
+    this.image1 = null
+    this.image2 = null
+    // Release GPU canvas backing store
+    if (this.canvas) {
+      this.canvas.width = 0
+      this.canvas.height = 0
+    }
   },
   methods: {
     ...mapActions(['removeImages', 'emptyImages', 'setImages']),
@@ -642,7 +671,11 @@ export default {
     goBack() {
       if (this.isExternal) {
         this.$parent.showCompare = false
-        this.imageInfoList && this.imageInfoList.forEach(URL.revokeObjectURL)
+        if (this.imageInfoList) {
+          this.imageInfoList.forEach((item) => {
+            if (item.imageUrl) URL.revokeObjectURL(item.imageUrl)
+          })
+        }
         this.selectedList = []
         this.imageInfoList = void 0
         return

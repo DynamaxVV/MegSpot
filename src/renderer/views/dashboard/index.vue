@@ -233,6 +233,7 @@ export default {
       'refreshCompareTask',
       'swapCompareTask',
       'clearCompareTask',
+      'clearAllImageData',
       'setRecentCompareFolder'
     ]),
     mapSide(side) {
@@ -373,6 +374,7 @@ export default {
           }
         )
         await this.clearCompareTask()
+        await this.clearAllImageData()
         this.$message.success(this.$t('dashboard.compareTask.messages.cleared'))
       } catch (error) {
         return error

@@ -403,6 +403,11 @@ export default {
       this.imgMat = null
     }
     this.bitMap && this.bitMap.close()
+    // Release GPU canvas backing store
+    if (this.canvas) {
+      this.canvas.width = 0
+      this.canvas.height = 0
+    }
     // this.initFilters()
   },
   watch: {

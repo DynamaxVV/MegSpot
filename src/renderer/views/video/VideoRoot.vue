@@ -100,14 +100,15 @@ export default {
   mounted() {
     this.initHotkeyEvents()
     this.calcSplitHeight()
-    window.addEventListener('resize', this.handleResize, true)
     addDragFolderListener(document.getElementById('folderTree'), false)
   },
   activated() {
     window.addEventListener('keydown', this.handleHotKey, true)
+    window.addEventListener('resize', this.handleResize, true)
   },
   deactivated() {
     window.removeEventListener('keydown', this.handleHotKey, true)
+    window.removeEventListener('resize', this.handleResize, true)
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.handleResize, true)

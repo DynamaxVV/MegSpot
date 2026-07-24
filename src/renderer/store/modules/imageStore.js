@@ -214,6 +214,13 @@ const imageStore = {
     },
     CLEAR_COMPARE_TASK: (state) => {
       state.compareTask = createCompareTask()
+    },
+    // Clear all image data: folders, selected images, all collections, and expand data
+    CLEAR_ALL_IMAGE_DATA: (state) => {
+      state.imageFolders = []
+      state.collections.forEach((c) => { c.list = [] })
+      state.imageList = []
+      state.expandData = []
     }
   },
   actions: {
@@ -299,6 +306,9 @@ const imageStore = {
     },
     clearCompareTask({ commit }) {
       commit('CLEAR_COMPARE_TASK')
+    },
+    clearAllImageData({ commit }) {
+      commit('CLEAR_ALL_IMAGE_DATA')
     },
     swapCompareTask({ state, commit }) {
       commit('SET_COMPARE_TASK', {

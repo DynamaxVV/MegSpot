@@ -1,5 +1,5 @@
 <template>
-  <div class="pair-compare-workspace">
+  <div class="pair-compare-workspace" :style="workspaceBgStyle" :class="{ 'dark-bg': isDarkBg }">
     <div v-if="!compareRows.length" class="workspace-empty">
       <p>{{ $t('dashboard.compareTask.workspace.empty') }}</p>
       <el-button size="mini" type="primary" @click="goDashboard">
@@ -16,7 +16,37 @@
           <el-button size="mini" :disabled="!hasPrev" @click="stepRow(-1)">
             {{ $t('dashboard.compareTask.workspace.prev') }}
           </el-button>
-          <span>{{ currentDisplayIndex }}/{{ compareRows.length }}</span>
+          <el-popover
+            ref="rowPopover"
+            placement="bottom"
+            trigger="click"
+            popper-class="row-list-popover"
+          >
+            <div class="row-list" slot="reference">
+              <span class="row-progress-text">{{ currentDisplayIndex }}/{{ compareRows.length }}</span>
+              <i class="el-icon-arrow-down el-icon--right"></i>
+            </div>
+            <div class="row-list-scroll">
+              <div
+                v-for="(row, index) in compareRows"
+                :key="row.id"
+                class="row-list-item"
+                :class="{ active: index === compareTask.currentIndex }"
+                @click="goToRow(index)"
+              >
+                <span class="row-index">{{ index + 1 }}</span>
+                <span class="row-names">
+                  <span class="row-name" :class="{ unmatched: !row.left }">
+                    {{ row.left ? truncateMiddle(row.left.displayName || row.left.name) : '---' }}
+                  </span>
+                  <span class="row-sep">vs</span>
+                  <span class="row-name" :class="{ unmatched: !row.right }">
+                    {{ row.right ? truncateMiddle(row.right.displayName || row.right.name) : '---' }}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </el-popover>
           <el-button size="mini" :disabled="!hasNext" @click="stepRow(1)">
             {{ $t('dashboard.compareTask.workspace.next') }}
           </el-button>
@@ -41,7 +71,7 @@
         >
           {{ $t('imageCenter.originalMode') }}
         </el-button>
-        <span class="keyboard-hint">↑↓键翻译，←→键切换对比，双击调整单图缩放，空格键复位</span>
+        <span class="keyboard-hint">↑↓键翻页，←→键切换对比，双击调整单图缩放，空格键复位</span>
       </div>
       <div v-if="compareTask.dirty" class="workspace-notice workspace-notice-warning">
         {{ $t('dashboard.compareTask.warnings.staleBody') }}
@@ -136,6 +166,22 @@ export default {
   },
   computed: {
     ...mapGetters(['compareTask', 'compareRows', 'currentCompareRow', 'imageConfig']),
+    compareBgColor() {
+      return this.$store.getters['preferenceStore/compareBgColor']
+    },
+    isDarkBg() {
+      const color = this.compareBgColor
+      if (!color) return false
+      const hex = color.replace('#', '')
+      if (hex.length !== 6) return false
+      const r = parseInt(hex.slice(0, 2), 16)
+      const g = parseInt(hex.slice(2, 4), 16)
+      const b = parseInt(hex.slice(4, 6), 16)
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.45
+    },
+    workspaceBgStyle() {
+      return this.compareBgColor ? { background: this.compareBgColor } : null
+    },
     compareMode() {
       return ['side-by-side', 'single', 'split'].includes(this.compareTask.mode)
         ? this.compareTask.mode
@@ -215,6 +261,29 @@ export default {
       if (nextIndex !== this.compareTask.currentIndex) {
         await this.patchCompareTask({ currentIndex: nextIndex, started: true })
       }
+    },
+    async goToRow(index) {
+      if (index !== this.compareTask.currentIndex) {
+        await this.patchCompareTask({ currentIndex: index, started: true })
+      }
+      this.$refs.rowPopover.doClose()
+    },
+    truncateMiddle(text, maxWidth = 210) {
+      if (!text) return text
+      // 中文/全角≈2单位(13px)，英文≈1单位(7px)
+      const charWidth = (ch) => ch.charCodeAt(0) > 0x7f ? 2 : 1
+      let total = 0
+      for (let i = 0; i < text.length; i++) total += charWidth(text[i])
+      // 13px字体下，每单位≈7px，maxWidth=210px ≈ 30单位
+      const maxUnits = Math.floor(maxWidth / 7)
+      if (total <= maxUnits) return text
+      const frontBudget = Math.floor((maxUnits - 3) / 2)
+      const backBudget = maxUnits - 3 - frontBudget
+      let fw = 0; let fi = 0
+      while (fi < text.length && fw + charWidth(text[fi]) <= frontBudget) { fw += charWidth(text[fi]); fi++ }
+      let bw = 0; let bi = text.length
+      while (bi > fi && bw + charWidth(text[bi - 1]) <= backBudget) { bw += charWidth(text[bi - 1]); bi-- }
+      return text.slice(0, fi) + '...' + text.slice(bi)
     },
     async changeMode(mode) {
       await this.patchCompareTask({ mode, started: true })
@@ -438,13 +507,22 @@ export default {
         event.preventDefault()
         this.resetCurrentGroup()
       }
-      if (['ArrowLeft', 'ArrowRight'].includes(event.key) && this.canPreviewHoveredSide()) {
+      // ArrowLeft: always show right image on left canvas
+      if (event.key === 'ArrowLeft' && this.canPreviewLeftSide()) {
         event.preventDefault()
-        this.startPreview()
+        this.startLeftPreview()
+      }
+      // ArrowRight: always show left image on right canvas
+      if (event.key === 'ArrowRight' && this.canPreviewRightSide()) {
+        event.preventDefault()
+        this.startRightPreview()
       }
     },
     handleKeyup(event) {
-      if (['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+      if (event.key === 'ArrowLeft') {
+        this.cancelPreview()
+      }
+      if (event.key === 'ArrowRight') {
         this.cancelPreview()
       }
     },
@@ -465,6 +543,32 @@ export default {
         this.previewSide = this.hoveredSide
         targetCanvas.setCoverStatus(sourceCanvas.getSnapshot(), true)
       }
+    },
+    startLeftPreview() {
+      if (this.previewSide === 'left') return
+      this.cancelPreview()
+      const targetCanvas = this.getCanvas('left')
+      const sourceCanvas = this.getCanvas('right')
+      if (targetCanvas && sourceCanvas) {
+        this.previewSide = 'left'
+        targetCanvas.setCoverStatus(sourceCanvas.getSnapshot(), true)
+      }
+    },
+    startRightPreview() {
+      if (this.previewSide === 'right') return
+      this.cancelPreview()
+      const targetCanvas = this.getCanvas('right')
+      const sourceCanvas = this.getCanvas('left')
+      if (targetCanvas && sourceCanvas) {
+        this.previewSide = 'right'
+        targetCanvas.setCoverStatus(sourceCanvas.getSnapshot(), true)
+      }
+    },
+    canPreviewLeftSide() {
+      return this.showSideBySide && !!this.currentRow?.left && !!this.currentRow?.right
+    },
+    canPreviewRightSide() {
+      return this.showSideBySide && !!this.currentRow?.left && !!this.currentRow?.right
     },
     getCanvas(side) {
       return side ? this.$refs[`${side}Canvas`] : null
@@ -642,6 +746,151 @@ export default {
     align-items: center;
     justify-content: center;
     color: $labelColor;
+  }
+
+  .row-list {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+
+  .row-list:hover {
+    background: #f0f2f5;
+  }
+
+  .row-list:hover .row-progress-text {
+    color: $primaryColor;
+  }
+
+  .row-progress-text {
+    cursor: pointer;
+  }
+
+  .dark-bg {
+    .workspace-controls {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #d0d0d0;
+    }
+
+    ::v-deep .workspace-controls .el-button--default {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.15);
+      color: #d0d0d0;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.18);
+        color: #fff;
+      }
+    }
+
+    ::v-deep .workspace-controls .el-radio-group {
+      .el-radio-button__inner {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #b0b0b0;
+      }
+
+      .is-active .el-radio-button__inner {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+      }
+    }
+
+    .pair-status {
+      color: #a0a0a0;
+    }
+
+    .keyboard-hint {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .workspace-notice {
+      background: rgba(255, 255, 255, 0.05);
+      color: #a0a0a0;
+    }
+
+    .panel-placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+  }
+}
+</style>
+
+<style lang="scss">
+.row-list-popover {
+  max-width: 546px;
+  max-height: 360px;
+  overflow: hidden;
+  padding: 4px 0;
+
+  .row-list-scroll {
+    max-height: 352px;
+    overflow-y: auto;
+  }
+
+  .row-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+
+    &:hover {
+      background: #f0f2f5;
+    }
+
+    &.active {
+      background: #1067d1;
+      color: #fff;
+
+      .row-name.unmatched {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .row-sep {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+
+    .row-index {
+      flex-shrink: 0;
+      width: 20px;
+      text-align: right;
+      font-size: 12px;
+      opacity: 0.65;
+    }
+
+    .row-names {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .row-name {
+      max-width: 210px;
+      overflow: hidden;
+      white-space: nowrap;
+      font-size: 13px;
+
+      &.unmatched {
+        font-style: italic;
+        color: #c0c4cc;
+      }
+    }
+
+    .row-sep {
+      flex-shrink: 0;
+      font-size: 11px;
+      color: #c0c4cc;
+    }
   }
 }
 </style>

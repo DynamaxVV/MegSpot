@@ -19,8 +19,9 @@ const router = new Router({
 var end = null
 router.beforeEach((to, from, next) => {
   end = Performance.startExecute(`${from.path} => ${to.path} 路由耗时`) // 路由性能监控
+  const done = end
   setTimeout(() => {
-    end()
+    done()
   }, 0)
   next()
 })
