@@ -15,7 +15,10 @@ let mainConfig = {
   entry: {
     main: path.join(__dirname, '../src/main/index.js')
   },
-  externals: [...Object.keys(dependencies || {})],
+  externals: Object.keys(dependencies || {}).reduce((externals, dependency) => {
+    externals[dependency] = `commonjs2 ${dependency}`
+    return externals
+  }, {}),
   module: {
     rules: [
       {

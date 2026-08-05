@@ -1,5 +1,7 @@
 MegSpot is licensed under the Apache License Version 2.0, except for the third-party components listed below.
 
+This notice was refreshed for the DynamaxVV/MegSpot modified edition on 2026-08-06. The list below follows the current package manifest; upstream attribution remains applicable to inherited code.
+
 All third-party open source components listed below are provided without any liability  or warranty from their copyright holders.
 *********************************************************************************************************************************
 Software Licensed under the MIT License:
@@ -13,9 +15,6 @@ Copyright (c) 2021 dhdbstjr98
 3. @popperjs/core
 Copyright (c) 2019 Federico Zivolo
 
-4. axios
-Copyright (c) 2014-present Matt Zabriskie
-
 5. dayjs
 Copyright (c) 2018-present, iamkun
 
@@ -28,11 +27,8 @@ Copyright (c) 2016 Alexey Prokhorov
 8. electron-store
 Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
 
-9. electron-updater,electron-builder
+9. electron-builder
 Copyright (c) 2015 Loopline Systems
-
-10. ~~electron-devtools-installer
-Copyright (c) 2016 Samuel Attard~~
 
 11. element-ui
 Copyright (c) 2016-present ElemeFE
@@ -83,7 +79,7 @@ Copyright JS Foundation and other contributors
 Copyright (c) 2016, Google Inc.
 
 37. sass-loader,css-loader,node-loader,style-loader,terser-webpack-plugin,url-loader
-Copyright JS Foundation and other contributorsss
+Copyright JS Foundation and other contributors
 
 38. lodash
 Copyright JS Foundation and other contributors <https://js.foundation/>

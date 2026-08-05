@@ -22,7 +22,7 @@ Examples of unacceptable behavior include:
 * Publishing others’ private information, such as a physical or email address, without their explicit permission
 * Other conduct which could reasonably be considered inappropriate in a professional setting
 
-All MegEngine forums and spaces are meant for professional interactions, and any behavior which could reasonably be considered inappropriate in a professional setting is unacceptable.
+All MegSpot repository spaces are meant for professional interactions, and any behavior which could reasonably be considered inappropriate in a professional setting is unacceptable.
 
 ## Our Responsibilities
 
@@ -37,7 +37,7 @@ This Code of Conduct applies both within project spaces and in public spaces whe
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project team at megengine@megvii.com. The project team will review and investigate all complaints, and will respond in a way that it deems appropriate to the circumstances. The project team is obligated to maintain confidentiality with regard to the reporter of an incident. Further details of specific enforcement policies may be posted separately.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported through the [MegSpot Issues](https://github.com/DynamaxVV/MegSpot/issues) page. Please avoid posting private or sensitive details publicly; if a report cannot be handled in a public issue, state that in the issue and wait for maintainer guidance. Project maintainers will review and investigate complaints and respond in a way that is appropriate to the circumstances.
 
 Project maintainers who do not follow or enforce the Code of Conduct in good faith may face temporary or permanent repercussions as determined by other members of the project's leadership.
 

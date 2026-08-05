@@ -1,5 +1,7 @@
 # MegEngine Contributor License Agreement
 
+> Historical upstream document retained for attribution context. It applies to contributions submitted to MegEngine and is not a contribution requirement for the DynamaxVV/MegSpot repository. See [CONTRIBUTING.md](CONTRIBUTING.md) for the current fork policy.
+
 In order to clarify the intellectual property license granted with Contributions from any person or entity, the open source project MegEngine ("MegEngine") must have a Contributor License Agreement (CLA) on file that has been signed by each Contributor, indicating agreement to the license terms below. This license is for your protection as a Contributor as well as the protection of MegEngine and its users; it does not change your rights to use your own Contributions for any other purpose.
 
 This Agreement allows an individual or an entity to submit Contributions to MegEngine, to authorize Contributions submitted by its designated employees to MegEngine, and to grant copyright and patent licenses.

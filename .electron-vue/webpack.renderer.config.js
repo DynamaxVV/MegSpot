@@ -30,11 +30,12 @@ let rendererConfig = {
   entry: {
     renderer: resolve('src/renderer/main.js'),
   },
-  externals: [
-    ...Object.keys(dependencies || {}).filter(
-      (d) => !whiteListedModules.includes(d)
-    ),
-  ],
+  externals: Object.keys(dependencies || {})
+    .filter((dependency) => !whiteListedModules.includes(dependency))
+    .reduce((externals, dependency) => {
+      externals[dependency] = `commonjs2 ${dependency}`
+      return externals
+    }, {}),
   module: {
     rules: [
       // {
