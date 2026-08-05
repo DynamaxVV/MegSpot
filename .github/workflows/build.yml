@@ -58,7 +58,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          # Keep Windows release artifacts on the macOS cross-build path used locally.
+          - os: macos-latest
             target: win64
             artifact_glob: build/*-win-x64-portable.exe
           - os: ubuntu-latest

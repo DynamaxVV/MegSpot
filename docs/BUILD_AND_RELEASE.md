@@ -76,6 +76,8 @@ Windows x64：
 npm run build:win64
 ~~~
 
+公开 Release 中的 Windows x64 Portable 也在 macOS runner 上执行上述命令进行交叉构建，以保持与 macOS 本地直接打包的产物路径一致；Release 不使用原生 Windows runner 构建 Windows 包。
+
 Linux x64：
 
 ~~~bash
@@ -124,7 +126,7 @@ macOS DMG 可以作为明确标注的公开预发布资产，但在完成 Apple 
 工作流文件为 <code>.github/workflows/build.yml</code>，分为三个阶段：
 
 1. **quality**：固定 Node/Yarn，安装锁定依赖，执行三个最小自检、主进程打包和 Web 构建。
-2. **build**：在 Windows、Ubuntu 和 macOS runner 上分别执行平台构建，并上传单独的 artifact。当前 job 统一设置 <code>CSC_IDENTITY_AUTO_DISCOVERY=false</code>，明确生成未签名预发布产物。
+2. **build**：在 macOS runner 上交叉构建 Windows x64 Portable 和 macOS arm64 DMG，在 Ubuntu runner 上构建 Linux x64 AppImage，并上传单独的 artifact。当前 job 统一设置 <code>CSC_IDENTITY_AUTO_DISCOVERY=false</code>，明确生成未签名预发布产物。
 3. **release**：仅在 tag 触发时执行，合并构建资产，生成 <code>SHA256SUMS</code>，使用仓库自动提供的 <code>GITHUB_TOKEN</code> 创建 Draft + Pre-release，并自动生成 GitHub 发布说明。
 
 当前 Windows/Linux/macOS 预发布不需要代码签名 secret。工作流只申请构建阶段的 <code>contents: read</code>，Release 阶段单独申请 <code>contents: write</code>；这是 GitHub Actions 自动令牌的最小权限边界。参考 [GitHub 自动令牌权限](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication)。
