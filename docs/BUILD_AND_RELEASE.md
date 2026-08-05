@@ -40,6 +40,8 @@ corepack prepare yarn@1.22.21 --activate
 yarn install --frozen-lockfile --ignore-engines
 ~~~
 
+<code>--ignore-engines</code> 是有意保留的兼容设置：项目固定使用 Node.js 16 和 Webpack 4，而锁文件中的部分间接依赖声明了更高的 Node engine；构建结果仍由后续自检和打包步骤验证。
+
 不要在未确认 Node 版本的情况下升级依赖或重新生成 <code>yarn.lock</code>。本项目使用 Webpack 4，较新的 Node/OpenSSL 组合可能导致加密初始化或压缩阶段失败。
 
 ## 3. 发布前本地检查
