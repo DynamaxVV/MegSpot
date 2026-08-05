@@ -88,7 +88,7 @@ jobs:
         run: yarn install --frozen-lockfile --ignore-engines
 
       - name: Build platform artifact
-        run: npm run build:${{ matrix.target }}
+        run: npm run build:${{ matrix.target }} -- --publish never
 
       - name: Upload platform artifact
         uses: actions/upload-artifact@v4
