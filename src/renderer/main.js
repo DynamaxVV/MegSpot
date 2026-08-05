@@ -23,7 +23,6 @@ import VueScroll from 'vuescroll'
 import VueLazyload from 'vue-lazyload'
 
 import { initEventBus } from '@/utils/bus'
-import { initAnalyze } from '@/utils/analyze'
 import { imageCache } from '@/utils/imageCache'
 
 Vue.use(VueLazyload, {
@@ -46,13 +45,6 @@ Vue.use(ElementUI, {
 })
 
 initEventBus()
-
-if (process.env.NODE_ENV === 'production') {
-  console.log('initAnalyze...')
-  initAnalyze()
-} else {
-  console.log('not initAnalyze')
-}
 
 new Vue({
   components: { App },

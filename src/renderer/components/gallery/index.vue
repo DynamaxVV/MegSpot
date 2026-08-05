@@ -157,32 +157,13 @@ export default {
   },
   watch: {},
   mounted() {
-    window.addEventListener('keydown', this.handleHotKey, true)
     this.modalItem = document.getElementsByClassName('modal')[0]
     this.dragList = document.getElementsByClassName('container')[0]
-  },
-  activated() {
-    window.addEventListener('keydown', this.handleHotKey, true)
-  },
-  deactivated() {
-    window.removeEventListener('keydown', this.handleHotKey, true)
-  },
-  beforeDestroy() {
-    window.removeEventListener('keydown', this.handleHotKey, true)
   },
   methods: {
     isImage,
     isVideo,
     getImageUrlSync,
-    handleHotKey(event) {
-      if ((event.metaKey || event.ctrlKey) && event.keyCode === 70) {
-        if (this.visible) {
-          this.hideModal()
-        } else {
-          this.showModal()
-        }
-      }
-    },
     handleWrapperClick() {
       if (!this.closeOnClickModal) return
       this.hideModal()

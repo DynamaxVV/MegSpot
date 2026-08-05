@@ -332,25 +332,25 @@ export default {
       hotkeyDownEvents.set('moveDown', () => {
         this.broadCast({
           name: 'doDrag',
-          data: { offset: { x: 0, y: this.preference.moveDistance } }
+          data: { offset: { x: 0, y: -this.preference.moveDistance } }
         })
       })
       hotkeyDownEvents.set('moveUp', () => {
         this.broadCast({
           name: 'doDrag',
-          data: { offset: { x: 0, y: -this.preference.moveDistance } }
+          data: { offset: { x: 0, y: this.preference.moveDistance } }
         })
       })
       hotkeyDownEvents.set('moveRight', () => {
         this.broadCast({
           name: 'doDrag',
-          data: { offset: { x: this.preference.moveDistance, y: 0 } }
+          data: { offset: { x: -this.preference.moveDistance, y: 0 } }
         })
       })
       hotkeyDownEvents.set('moveLeft', () => {
         this.broadCast({
           name: 'doDrag',
-          data: { offset: { x: -this.preference.moveDistance, y: 0 } }
+          data: { offset: { x: this.preference.moveDistance, y: 0 } }
         })
       })
       hotkeyDownEvents.set('previousGroup', () => {
@@ -364,9 +364,6 @@ export default {
           this.groupNum++
           this.changeGroup(this.groupNum, this.groupNum - 1)
         }
-      })
-      hotkeyDownEvents.set('rgbText', () => {
-        this.setPreference({ showRGBText: !this.preference.showRGBText })
       })
 
       hotkeyUpEvents.set('top', () => {

@@ -4,11 +4,16 @@ import Performance from '@/tools/performance'
 import store from '../store'
 // 引入路由表
 import routes from './routes'
-import { trackEvent } from '@/utils/analyze'
+import { createOperationId, getOperationId, logDiagnosticError, logDiagnosticEvent, setOperationId } from '@/utils/diagnosticLog'
 
 const originalPush = Router.prototype.push
 Router.prototype.push = function push(location) {
-  return originalPush.call(this, location).catch((err) => err)
+  return originalPush.call(this, location).catch((err) => {
+    logDiagnosticError('route', 'route_push_failed', err, { operationId: getOperationId() }, {
+      location: typeof location === 'string' ? location : location?.path
+    })
+    return err
+  })
 }
 Vue.use(Router)
 const router = new Router({
@@ -17,7 +22,16 @@ const router = new Router({
 })
 
 var end = null
+const routeStartedAt = new Map()
 router.beforeEach((to, from, next) => {
+  if (to.name === 'image-compare' && to.query.pairTask === '1') {
+    setOperationId(createOperationId())
+  }
+  routeStartedAt.set(to.fullPath, Date.now())
+  logDiagnosticEvent('route', 'route_start', {
+    operationId: getOperationId(),
+    route: to.fullPath
+  }, { from: from.fullPath })
   end = Performance.startExecute(`${from.path} => ${to.path} 路由耗时`) // 路由性能监控
   const done = end
   setTimeout(() => {
@@ -27,17 +41,22 @@ router.beforeEach((to, from, next) => {
 })
 
 router.afterEach((to, from) => {
-  trackEvent('page_view', {
-    category: 'change-view',
-    name: to.name || to.path,
-    view: to.fullPath,
-    from: from.fullPath
+  logDiagnosticEvent('route', 'route_ready', {
+    operationId: getOperationId(),
+    route: to.fullPath
+  }, {
+    from: from.fullPath,
+    durationMs: Date.now() - (routeStartedAt.get(to.fullPath) || Date.now())
   })
-
+  routeStartedAt.delete(to.fullPath)
   // clear tmp collections
   if (!['image-compare', 'video-compare'].includes(to.name)) {
     store.dispatch('imageStore/removeTmpCollection')
     store.dispatch('videoStore/removeTmpCollection')
   }
+})
+
+router.onError((error) => {
+  logDiagnosticError('route', 'route_failed', error, { operationId: getOperationId() })
 })
 export default router

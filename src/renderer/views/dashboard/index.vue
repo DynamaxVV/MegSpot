@@ -97,16 +97,30 @@
           <div v-if="!getSources(side).length" class="source-empty">
             {{ $t('dashboard.compareTask.table.empty') }}
           </div>
-          <div v-for="(source, index) in getSources(side)" :key="getSourceKey(side, source)" class="source-item">
-            <el-tag size="mini" effect="plain">{{ getSourceTypeLabel(source.type) }}</el-tag>
-            <el-tooltip :content="source.path" placement="top">
-              <div class="source-copy">
-                <span class="source-name">{{ getSourceName(source.path) }}</span>
-                <span class="source-path">{{ source.path }}</span>
-              </div>
-            </el-tooltip>
-            <el-button type="text" icon="el-icon-close" @click="removeSource(side, index)" />
-          </div>
+          <draggable
+            :value="getSources(side)"
+            :group="{ name: 'compare-sources', pull: false, put: false }"
+            handle=".source-drag-handle"
+            class="source-list-items"
+            @change="handleSourceDragChange(side, $event)"
+          >
+            <div v-for="(source, index) in getSources(side)" :key="getSourceKey(side, source)" class="source-item">
+              <span
+                v-if="source.type === 'folder'"
+                class="source-drag-handle"
+                :title="$t('dashboard.compareTask.buttons.reorderSource')"
+              >⠿</span>
+              <span v-else></span>
+              <el-tag size="mini" effect="plain">{{ getSourceTypeLabel(source.type) }}</el-tag>
+              <el-tooltip :content="source.path" placement="top">
+                <div class="source-copy">
+                  <span class="source-name">{{ getSourceName(source.path) }}</span>
+                  <span class="source-path">{{ source.path }}</span>
+                </div>
+              </el-tooltip>
+              <el-button type="text" icon="el-icon-close" @click="removeSource(side, index)" />
+            </div>
+          </draggable>
         </div>
       </section>
     </div>
@@ -153,7 +167,7 @@
 </template>
 
 <script>
-const { dialog } = require('@electron/remote')
+import draggable from 'vuedraggable'
 import { createNamespacedHelpers } from 'vuex'
 import {
   ingestImageSources,
@@ -161,6 +175,7 @@ import {
   rebuildItemsFromSources
 } from '@/utils/imageComparisonSources'
 
+const { dialog } = require('@electron/remote')
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
 const SIDE_TO_STORE_KEY = {
   baseline: 'left',
@@ -183,6 +198,7 @@ const reduceIgnored = (ignored = []) => ignored.reduce((acc, item) => {
 
 export default {
   name: 'dashboard',
+  components: { draggable },
   data() {
     return {
       sides: Object.keys(SIDE_TO_STORE_KEY),
@@ -326,6 +342,42 @@ export default {
       const result = await rebuildItemsFromSources(nextSources)
       await this.applySideResult(side, 'added', result)
     },
+    async handleSourceDragChange(side, change) {
+      if (change && change.moved) {
+        const nextSources = this.getSources(side).slice()
+        const [source] = nextSources.splice(change.moved.oldIndex, 1)
+        nextSources.splice(change.moved.newIndex, 0, source)
+        await this.refreshSourceSides({ [this.mapSide(side)]: nextSources })
+        return
+      }
+      if (!change || !change.added) {
+        return
+      }
+      const otherSide = side === 'baseline' ? 'comparison' : 'baseline'
+      const nextSources = this.getSources(side).slice()
+      nextSources.splice(change.added.newIndex, 0, change.added.element)
+      const otherSources = this.getSources(otherSide)
+        .filter((source) => source.path !== change.added.element.path)
+      await this.refreshSourceSides({
+        [this.mapSide(side)]: nextSources,
+        [this.mapSide(otherSide)]: otherSources
+      })
+    },
+    async refreshSourceSides(sourcePatch) {
+      const nextSources = {
+        left: sourcePatch.left || this.compareTask.sources.left,
+        right: sourcePatch.right || this.compareTask.sources.right
+      }
+      const [left, right] = await Promise.all([
+        rebuildItemsFromSources(nextSources.left),
+        rebuildItemsFromSources(nextSources.right)
+      ])
+      await this.refreshCompareTask({
+        sources: { left: left.sources, right: right.sources },
+        leftItems: left.items,
+        rightItems: right.items
+      })
+    },
     async refreshPairs() {
       if (!this.hasTask) {
         this.$message.warning(this.$t('dashboard.compareTask.messages.noSources'))
@@ -394,8 +446,8 @@ export default {
         return this.freshnessCheckPromise
       }
       this.freshnessCheckPromise = Promise.all([
-        inspectImageSourceFreshness(this.compareTask.sources.left, this.compareTask.leftItems),
-        inspectImageSourceFreshness(this.compareTask.sources.right, this.compareTask.rightItems)
+        inspectImageSourceFreshness(this.compareTask.sources.left, this.compareTask.leftItems, this.compareTask.sources.left),
+        inspectImageSourceFreshness(this.compareTask.sources.right, this.compareTask.rightItems, this.compareTask.sources.right)
       ]).then(async ([left, right]) => {
         if ((left.stale || right.stale) && !this.compareTask.dirty) {
           await this.patchCompareTask({ dirty: true })
@@ -544,14 +596,29 @@ export default {
       overflow: auto;
     }
 
+    .source-list-items {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
     .source-item {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 10px;
+      grid-template-columns: 12px auto minmax(0, 1fr) auto;
+      gap: 6px;
       align-items: center;
-      padding: 10px 12px;
+      padding: 8px 10px;
       background: #f8fafc;
       border-radius: 10px;
+    }
+
+    .source-drag-handle {
+      cursor: grab;
+      color: $labelColor;
+      font-size: 14px;
+      font-style: normal;
+      line-height: 1;
+      text-align: center;
     }
 
     .source-copy {

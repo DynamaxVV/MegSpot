@@ -6,6 +6,7 @@ import {
   rebuildCompareTask,
   swapCompareTaskSides
 } from '@/utils/imagePairing'
+import { logCompareEvent, logDiagnosticError } from '../../utils/diagnosticLog'
 
 export const useCurrentCollection = (state) => {
   let collection = state.collections.find((collection) => collection.name === state.collectionName)
@@ -54,6 +55,34 @@ const normalizeCompareTask = (task = {}, fallbackTask = createCompareTask()) => 
   compareTask.dirty = typeof compareTask.dirty === 'boolean' ? compareTask.dirty : false
   compareTask.version = Number.isFinite(compareTask.version) ? compareTask.version : 0
   return compareTask
+}
+
+const summarizeCompareTask = (task = {}) => ({
+  sources: {
+    left: Array.isArray(task.sources?.left) ? task.sources.left.length : 0,
+    right: Array.isArray(task.sources?.right) ? task.sources.right.length : 0
+  },
+  leftItems: Array.isArray(task.leftItems) ? task.leftItems.length : 0,
+  rightItems: Array.isArray(task.rightItems) ? task.rightItems.length : 0,
+  rows: Array.isArray(task.rows) ? task.rows.length : 0,
+  currentIndex: Number.isInteger(task.currentIndex) ? task.currentIndex : 0,
+  mode: task.mode,
+  started: Boolean(task.started),
+  dirty: Boolean(task.dirty),
+  version: Number.isFinite(task.version) ? task.version : 0
+})
+
+const logTaskMutation = (event, previous, next) => {
+  const currentIndex = Number.isInteger(next.currentIndex) ? next.currentIndex : 0
+  const row = Array.isArray(next.rows) ? next.rows[currentIndex] : null
+  logCompareEvent(event, {
+    taskVersion: next.version,
+    index: currentIndex,
+    rowId: row && row.id
+  }, {
+    before: summarizeCompareTask(previous),
+    after: summarizeCompareTask(next)
+  })
 }
 
 const imageStore = {
@@ -203,17 +232,23 @@ const imageStore = {
       })
     },
     SET_COMPARE_TASK: (state, task) => {
+      const previous = state.compareTask
       state.compareTask = normalizeCompareTask(task, state.compareTask)
+      logTaskMutation('compare_task_set', previous, state.compareTask)
     },
     PATCH_COMPARE_TASK: (state, patch) => {
+      const previous = state.compareTask
       state.compareTask = normalizeCompareTask({
         ...state.compareTask,
         ...patch,
         version: state.compareTask.version + 1
       }, state.compareTask)
+      logTaskMutation('compare_task_patch', previous, state.compareTask)
     },
     CLEAR_COMPARE_TASK: (state) => {
+      const previous = state.compareTask
       state.compareTask = createCompareTask()
+      logTaskMutation('compare_task_clear', previous, state.compareTask)
     },
     // Clear all image data: folders, selected images, all collections, and expand data
     CLEAR_ALL_IMAGE_DATA: (state) => {
@@ -317,16 +352,39 @@ const imageStore = {
       })
     },
     refreshCompareTask({ state, commit }, patch = {}) {
-      const nextTask = rebuildCompareTask({
-        ...state.compareTask,
-        ...patch,
-        sources: {
-          left: patch.sources && Array.isArray(patch.sources.left) ? patch.sources.left : state.compareTask.sources.left,
-          right: patch.sources && Array.isArray(patch.sources.right) ? patch.sources.right : state.compareTask.sources.right
-        },
-        version: state.compareTask.version + 1
+      const startedAt = Date.now()
+      logCompareEvent('compare_task_refresh_start', {
+        taskVersion: state.compareTask.version,
+        index: state.compareTask.currentIndex,
+        rowId: state.compareTask.rows[state.compareTask.currentIndex]?.id
+      }, {
+        patchKeys: Object.keys(patch)
       })
-      commit('SET_COMPARE_TASK', nextTask)
+      try {
+        const nextTask = rebuildCompareTask({
+          ...state.compareTask,
+          ...patch,
+          sources: {
+            left: patch.sources && Array.isArray(patch.sources.left) ? patch.sources.left : state.compareTask.sources.left,
+            right: patch.sources && Array.isArray(patch.sources.right) ? patch.sources.right : state.compareTask.sources.right
+          },
+          version: state.compareTask.version + 1
+        })
+        commit('SET_COMPARE_TASK', nextTask)
+        logCompareEvent('compare_task_refresh_done', {
+          taskVersion: nextTask.version,
+          index: nextTask.currentIndex,
+          rowId: nextTask.rows[nextTask.currentIndex]?.id
+        }, { durationMs: Date.now() - startedAt })
+        return nextTask
+      } catch (error) {
+        logDiagnosticError('compare', 'compare_task_refresh_failed', error, {
+          taskVersion: state.compareTask.version,
+          index: state.compareTask.currentIndex,
+          rowId: state.compareTask.rows[state.compareTask.currentIndex]?.id
+        }, { durationMs: Date.now() - startedAt })
+        throw error
+      }
     }
   }
 }

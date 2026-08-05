@@ -21,7 +21,6 @@ protocol.registerSchemesAsPrivileged([
 if (cmdArg.h) {
   console.log(`
 MegSpot支持linux命令启动方便用户快捷访问。可以通过参数快捷进入图片视频的文件选取和比较页面。
-Detail: https://github.com/MegEngine/MegSpot/wiki/%E5%91%BD%E4%BB%A4%E8%A1%8C%E6%93%8D%E4%BD%9C
 
 usage:
 ./MegSpot-x.x.x.AppImage [folderPath]  [-ivch]  进入文件选取页面，并浏览folderPath文件夹地址
@@ -35,7 +34,7 @@ Options:
   -c, --clear    清空已选
 
 advise:
-  由于MegSpot支持自动更新导致  MegSpot-x.x.x.AppImage的文件名称会不断变化，建议创建个硬链接指向AppImage
+  MegSpot-x.x.x.AppImage的文件名称会随版本变化，建议创建个硬链接指向AppImage
   命令：sudo ln ./MegSpot-x.x.x.AppImage /usr/bin/MegSpot
   `)
   app.exit()

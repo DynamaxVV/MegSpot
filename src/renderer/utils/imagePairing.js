@@ -13,6 +13,8 @@ export const DEFAULT_SORT_CONFIG = {
 }
 
 const IMAGE_FILE_RE = /\.(jpe?g|ico|svg|bmp|avif|tif|tiff|a?png)$/i
+const COPY_SUFFIX_RE = /\s*拷贝$/
+const COMPOSITE_NAME_RE = /^\d+(?:\+\d+)+$/
 
 const normalizeNumber = (value) => {
   const num = Number(value)
@@ -36,6 +38,59 @@ const compareNumber = (left, right, field) => normalizeNumber(left[field]) - nor
 
 const comparePath = (left, right) => NAME_COLLATOR.compare(left.path, right.path)
 
+const getCompositeTokens = (name = '') => {
+  const baseName = normalizeBaseName(name)
+  return COMPOSITE_NAME_RE.test(baseName) ? baseName.split('+') : []
+}
+
+const getLogicalName = (entry) => {
+  const tokens = getCompositeTokens(entry && entry.name)
+  return tokens[0] || normalizeBaseName(entry && entry.name)
+}
+
+const collectCompositeCandidates = (leftSorted, rightSorted, nameMatches, matchedRight) => {
+  const candidates = []
+  leftSorted.forEach((left, leftIndex) => {
+    if (nameMatches[leftIndex] || !getCompositeTokens(left.name).length) return
+    rightSorted.forEach((right, rightIndex) => {
+      if (matchedRight.has(rightIndex) || getCompositeTokens(right.name).length) return
+      const tokenIndex = getCompositeTokens(left.name).indexOf(normalizeBaseName(right.name))
+      if (tokenIndex > -1) candidates.push({ leftIndex, rightIndex, tokenIndex })
+    })
+  })
+  rightSorted.forEach((right, rightIndex) => {
+    if (matchedRight.has(rightIndex) || !getCompositeTokens(right.name).length) return
+    leftSorted.forEach((left, leftIndex) => {
+      if (nameMatches[leftIndex] || getCompositeTokens(left.name).length) return
+      const tokenIndex = getCompositeTokens(right.name).indexOf(normalizeBaseName(left.name))
+      if (tokenIndex > -1) candidates.push({ leftIndex, rightIndex, tokenIndex })
+    })
+  })
+  return candidates.sort((left, right) => left.tokenIndex - right.tokenIndex
+    || left.leftIndex - right.leftIndex || left.rightIndex - right.rightIndex)
+}
+
+const applyCompositeMatches = (leftSorted, rightSorted, nameMatches, matchedRight) => {
+  collectCompositeCandidates(leftSorted, rightSorted, nameMatches, matchedRight)
+    .forEach(({ leftIndex, rightIndex }) => {
+      if (nameMatches[leftIndex] || matchedRight.has(rightIndex)) return
+      nameMatches[leftIndex] = rightSorted[rightIndex]
+      matchedRight.add(rightIndex)
+    })
+}
+
+const sortRowsByLogicalName = (rows, leftSort, rightSort, leftSorted, rightSorted) => {
+  if (leftSort.field !== 'name' || rightSort.field !== 'name') return rows
+  if (!leftSorted.concat(rightSorted).some((entry) => getCompositeTokens(entry.name).length)) return rows
+  return rows
+    .map((row, index) => ({ row, index, logicalName: getLogicalName(row.left || row.right) }))
+    .sort((left, right) => {
+      const result = NAME_COLLATOR.compare(left.logicalName, right.logicalName)
+      return (leftSort.order === 'desc' ? -result : result) || left.index - right.index
+    })
+    .map((item) => item.row)
+}
+
 const isSupportedImagePath = (filePath = '') => IMAGE_FILE_RE.test(String(filePath).split('?')[0])
 
 const createRow = (left, right) => ({
@@ -58,7 +113,11 @@ const withDisplayName = (entry, showFolderName = false) => {
   }
 }
 
-export const normalizeBaseName = (name = '') => splitBaseName(name).toLocaleLowerCase()
+export const normalizeBaseName = (name = '') => {
+  const baseName = splitBaseName(name)
+  const normalized = baseName.replace(COPY_SUFFIX_RE, '')
+  return (normalized || baseName).toLocaleLowerCase()
+}
 
 export const normalizeImageEntry = (entry = {}) => {
   if (!entry || !entry.path) {
@@ -145,6 +204,7 @@ const pairImageEntriesInScope = (
     matchedRight.add(rightIndex)
     return rightSorted[rightIndex]
   })
+  applyCompositeMatches(leftSorted, rightSorted, nameMatches, matchedRight)
   const remainingLeft = []
   const remainingRight = []
   nameMatches.forEach((right, index) => {
@@ -157,7 +217,7 @@ const pairImageEntriesInScope = (
       remainingRight.push(entry)
     }
   })
-  return leftSorted
+  const rows = leftSorted
     .map((left, index) => {
       if (nameMatches[index]) {
         return createRow(left, nameMatches[index])
@@ -166,6 +226,7 @@ const pairImageEntriesInScope = (
       return createRow(left, nextRight)
     })
     .concat(remainingRight.slice(remainingLeft.length).map((right) => createRow(null, right)))
+  return sortRowsByLogicalName(rows, leftSort, rightSort, leftSorted, rightSorted)
 }
 
 const groupEntriesBySource = (entries = [], sortConfig = DEFAULT_SORT_CONFIG) => {
@@ -212,6 +273,16 @@ export const relocateCurrentRowIndex = (rows = [], currentRow = null, fallbackIn
     return matchIndex
   }
   return Math.min(Math.max(fallbackIndex, 0), rows.length - 1)
+}
+
+export const findPreviousRowImage = (rows = [], rowIndex = 0, side = 'left') => {
+  for (let index = rowIndex - 1; index >= 0; index -= 1) {
+    const image = rows[index] && rows[index][side]
+    if (image) {
+      return image
+    }
+  }
+  return null
 }
 
 export const rebuildCompareTask = (task = {}) => {

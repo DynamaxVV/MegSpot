@@ -444,7 +444,7 @@ export default {
           () => {
             this.broadCast({
               name: 'doDrag',
-              data: { offset: { x: 0, y: this.preference.moveDistance } }
+              data: { offset: { x: 0, y: -this.preference.moveDistance } }
             })
           }
         ],
@@ -453,7 +453,7 @@ export default {
           () => {
             this.broadCast({
               name: 'doDrag',
-              data: { offset: { x: 0, y: -this.preference.moveDistance } }
+              data: { offset: { x: 0, y: this.preference.moveDistance } }
             })
           }
         ],
@@ -462,7 +462,7 @@ export default {
           () => {
             this.broadCast({
               name: 'doDrag',
-              data: { offset: { x: this.preference.moveDistance, y: 0 } }
+              data: { offset: { x: -this.preference.moveDistance, y: 0 } }
             })
           }
         ],
@@ -471,14 +471,8 @@ export default {
           () => {
             this.broadCast({
               name: 'doDrag',
-              data: { offset: { x: -this.preference.moveDistance, y: 0 } }
+              data: { offset: { x: this.preference.moveDistance, y: 0 } }
             })
-          }
-        ],
-        [
-          'rgbText',
-          () => {
-            this.setPreference({ showRGBText: !this.preference.showRGBText })
           }
         ],
         [

@@ -9,7 +9,7 @@
                 type="text"
                 size="mini"
                 :disabled="!imageList.length"
-                :title="'cmd/ctrl+f show/hide selected file gallery. Click masking can hide gallery too.'"
+                :title="$t('gallery.showTip')"
               >
                 {{ $t('general.selected') }}
               </el-button>

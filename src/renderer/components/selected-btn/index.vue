@@ -9,7 +9,7 @@
       icon="el-icon-circle-close"
       style="margin-right: 10px; color: red"
       :disabled="!selectedList.length"
-      :title="`${$t('gallery.clear')}\n${$t('common.hotKey')}：cmd/ctrl+delete`"
+      :title="$t('gallery.clear')"
       @click="clearAll"
     />
   </div>

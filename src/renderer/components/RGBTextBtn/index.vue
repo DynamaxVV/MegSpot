@@ -1,7 +1,7 @@
 <template>
   <div
     :class="['rgb-text-btn', showRGBText ? 'active' : '']"
-    :title="$t('hotkey.rgbText') + `\n${$t('hotkey.key')}: 'c'`"
+    :title="$t('hotkey.rgbText')"
     @click="toggleShowRGBText"
   >
     RGB

@@ -16,7 +16,6 @@
         <el-button
           type="primary"
           round
-          :title="`${$t('common.hotKey')}：cmd/ctrl+enter`"
           class="toolbar-item"
           :disabled="!imageList.length"
           @click="compare"
@@ -101,7 +100,6 @@ import { createNamespacedHelpers } from 'vuex'
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
 import addDragFolderListener from '@/utils/dragFolder.js'
 import { imageCache } from '@/utils/imageCache'
-import { handleEvent } from '@/tools/hotkey'
 
 export default {
   name: 'ImageRoot',
@@ -110,22 +108,16 @@ export default {
     return {
       isDraging: false,
       checkedFiles: [],
-      dragFiles: [],
-      hotkeyEvents: undefined
+      dragFiles: []
     }
   },
   computed: {
     ...mapGetters(['imageList', 'imageFolders', 'expandData', 'currentPath', 'collections'])
   },
   mounted() {
-    this.initHotkeyEvents()
     addDragFolderListener(document.getElementById('folderTree'))
   },
-  activated() {
-    window.addEventListener('keydown', this.handleHotKey, true)
-  },
   deactivated() {
-    window.removeEventListener('keydown', this.handleHotKey, true)
     // Release heavy renderer memory when navigating away
     imageCache.clear()
     imageCache.clearPreloadPool()
@@ -141,25 +133,6 @@ export default {
       'addExpandData',
       'removeExpandData'
     ]),
-    initHotkeyEvents() {
-      this.hotkeyEvents = new Map([
-        [
-          'gotoCompare',
-          () => {
-            this.compare()
-          }
-        ],
-        [
-          'emptyAll',
-          () => {
-            this.emptyImages()
-          }
-        ]
-      ])
-    },
-    handleHotKey(event) {
-      handleEvent(event, this.hotkeyEvents)
-    },
     compare() {
       this.$router.push('/image/compare')
     },

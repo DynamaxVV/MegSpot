@@ -5,7 +5,6 @@ import config from '@config/index'
 import { platform } from 'os'
 import setIpc from './ipcMain'
 import { winURL, loadingURL } from '../config/StaticPath'
-import updateHandle from './autoUpdate'
 import setTray from './tray'
 import { cmdArg } from './cmdParse'
 
@@ -81,7 +80,6 @@ export function createMainWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
-  updateHandle(mainWindow)
 }
 // https://www.electronjs.org/docs/api/browser-window#new-browserwindowoptions
 function loadingWindow() {

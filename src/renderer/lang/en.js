@@ -1,7 +1,9 @@
 export default {
   common: {
     supportTypes: 'Support file types:',
-    desc: 'MegSpot is a cross-platform native application designed to provide users with convenient functions such as picture comparison, video comparison. \r\nYou can enter the QQ group(782365536) to learn more and get the latest information.',
+    desc: 'This version includes adaptations for image review workflows.',
+    originalProjectInfo: 'Original project information',
+    originalDesc: 'MegSpot is a cross-platform native application designed to provide users with convenient functions such as picture comparison and video comparison.\nYou can enter the QQ group(782365536) to learn more and get the latest information.',
     manual: 'manual',
     hotKey: 'hotKey',
     please: 'please',
@@ -74,26 +76,20 @@ export default {
   hotkey: {
     desc: 'description',
     key: 'shortcut keys',
-    gotoCompare: 'Jump to the comparison page',
-    emptyAll: 'Empty all selected images or videos',
     back: 'Go back to the file selection page',
-    gallery: 'Open/close image gallery',
-    previousGroup: 'Previous group',
-    nextGroup: 'Next group',
-    previousFrame: 'Previous Frame',
-    nextFrame: 'Next frame',
-    togglePlay: 'Play/Pause video',
-    top: 'Overlay contrast up',
-    left: 'Overlay contrast to the left',
-    right: 'Overlay contrast to the right',
-    bottom: 'Overlay down the contrast',
     moveUp: 'move up',
     moveLeft: 'move left',
     moveRight: 'move right',
     moveDown: 'move downward',
     pickColor: 'Turn on/off the color picker',
     rgbText: 'Enable/disable the display of RGB values in each pixel block',
-    compare: "Drag and drop to compare two images"
+    pairPrevious: 'Previous pair',
+    pairNext: 'Next pair',
+    pairPreviewLeft: 'Temporarily show the right image on the left',
+    pairPreviewRight: 'Temporarily show the left image on the right',
+    pairReset: 'Reset current pair',
+    reviewToggle: 'Toggle proofing mode',
+    reviewNumbers: 'Show/hide proofing annotation numbers'
   },
   dashboard: {
     compareTask: {
@@ -115,7 +111,8 @@ export default {
       buttons: {
         selectImages: 'Select Images',
         selectFolders: 'Select Folder',
-        recentFolder: 'Last opened folder'
+        recentFolder: 'Last opened folder',
+        reorderSource: 'Drag to reorder sources'
       },
       dialog: {
         file: 'Select Images',
@@ -186,9 +183,23 @@ export default {
           single: 'Single',
           split: 'Split'
         },
+        review: {
+          toggle: 'Proofing',
+          collapse: 'Collapse proofing list',
+          expand: 'Expand proofing list',
+          title: 'Translations ({count})',
+          empty: 'No translation annotations are available for this image.',
+          emptyHelp: 'Place the translation annotation file inside the image folder.',
+          showNumbers: 'Show annotation numbers',
+          types: {
+            1: 'Inside box',
+            2: 'Outside box'
+          }
+        },
         placeholders: {
           unmatchedBaseline: 'This pair is missing a baseline image.',
-          unmatchedComparison: 'This pair is missing a comparison image.'
+          unmatchedComparison: 'This pair is missing a comparison image.',
+          usePrevious: 'Use previous image'
         }
       }
     },
@@ -293,6 +304,9 @@ export default {
     horizontalFlip: 'horizontal flip',
     fullsize: 'fullsize',
     originalMode: 'Original mode',
+    loadFailed: 'Image loading failed',
+    retry: 'Retry',
+    returnToFileSelect: 'Return to file select',
     adaptive: 'adaptive',
     align: 'align(size not changes)',
     align2: 'align(same size)',
@@ -310,7 +324,8 @@ export default {
     backgroundMode: 'background mode',
     scaleOpt: 'scale options',
     showScale: 'show scale tip',
-    showMousePos: 'show mouse position'
+    showMousePos: 'show mouse position',
+    annotationOpacity: 'annotation marker opacity'
   },
   imageDragDropCompare: {
     hideLine: 'Hide filenames and comparison line',
@@ -373,7 +388,7 @@ export default {
     defaultSortTip: 'sort files by name'
   },
   gallery: {
-    showTip: 'Show/Hide the current file sequence\nShortcut key: cmd/ctrl+f ',
+    showTip: 'Show/Hide the current file sequence',
     clear: 'Clear',
     clearTip: 'Do you want to clear all selected files',
     enableNameSort: 'Sort by name',
@@ -386,7 +401,20 @@ export default {
     settings: 'settings',
     version: 'version',
     hotkey: 'shortcut',
-    log: 'log'
+    log: 'log',
+    logPage: {
+      eyebrow: 'DIAGNOSTICS',
+      title: 'Application logs',
+      description: 'Review recent runtime records or open the log folder for support.',
+      openFolder: 'Open log folder',
+      fileLabel: 'Log file location',
+      recentTitle: 'Recent logs',
+      recentHint: 'Last 100 lines',
+      refresh: 'Refresh',
+      viewerLabel: 'Recent application logs',
+      empty: 'There are no logs to display.',
+      readError: 'Failed to read logs'
+    }
   },
   histogram: {
     title: 'histogram',

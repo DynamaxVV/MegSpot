@@ -38,11 +38,13 @@
 <script>
 import { createNamespacedHelpers } from 'vuex'
 import { i18nRender } from '@/lang'
-import { uuidv4 } from '@/utils/analyze'
 import * as GLOBAL_CONSTANT from '@/constants'
 const { mapGetters, mapActions } = createNamespacedHelpers('preferenceStore')
 const { mapGetters: imageMapGetters, mapActions: imageMapActions } = createNamespacedHelpers('imageStore')
 const { mapGetters: videoMapGetters, mapActions: videoMapActions } = createNamespacedHelpers('videoStore')
+const uuidv4 = () => ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+  (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+)
 
 export default {
   name: 'FileSequenceCompareDialog',

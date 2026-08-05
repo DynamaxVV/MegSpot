@@ -67,52 +67,9 @@ const ctrlOrCommand = isDrawn ? 'Meta' : 'Control'
 
 export const DEFAULT_HOTKEYS = [
   {
-    name: 'gotoCompare',
-    desc: 'jump to compare',
-    keysArr: [[ctrlOrCommand, 'Enter']]
-  },
-  {
-    name: 'emptyAll',
-    desc: 'empty all selected files',
-    keysArr: [[ctrlOrCommand, 'Delete']]
-  },
-  {
     name: 'back',
     desc: 'back to file select',
     keysArr: [['Escape']]
-  },
-  {
-    name: 'gallery',
-    desc: 'show/hide select file gallery',
-    keysArr: [[ctrlOrCommand, 'f']]
-  },
-  {
-    name: 'previousGroup',
-    desc: 'change to previous group',
-    keysArr: [[ctrlOrCommand, 'ArrowLeft']]
-  },
-  {
-    name: 'nextGroup',
-    desc: 'change to next group',
-    keysArr: [[ctrlOrCommand, 'ArrowRight']]
-  },
-  // 前一帧 (暂停时可用)
-  {
-    index: 7,
-    name: 'previousFrame',
-    desc: 'Compare video frame by frame (play forward ←)',
-    keysArr: [[ctrlOrCommand, 'b']]
-  },
-  // 后一帧 (暂停时可用)
-  {
-    name: 'nextFrame',
-    desc: 'Compare video frame by frame (play backwards →)',
-    keysArr: [[ctrlOrCommand, 'n']]
-  },
-  {
-    name: 'togglePlay',
-    desc: 'paly/pause video',
-    keysArr: [[' ']]
   },
   {
     name: 'moveUp',
@@ -140,35 +97,40 @@ export const DEFAULT_HOTKEYS = [
     keysArr: [[ctrlOrCommand, 'p']]
   },
   {
-    name: 'top',
-    desc: 'compare to top',
+    name: 'pairPrevious',
+    desc: 'previous pair',
     keysArr: [['ArrowUp']]
   },
   {
-    name: 'left',
-    desc: 'compare to left',
-    keysArr: [['ArrowLeft']]
-  },
-  {
-    name: 'bottom',
-    desc: 'compare to bottom',
+    name: 'pairNext',
+    desc: 'next pair',
     keysArr: [['ArrowDown']]
   },
   {
-    name: 'right',
-    desc: 'compare to right',
+    name: 'pairPreviewLeft',
+    desc: 'show the right image on the left',
+    keysArr: [['ArrowLeft']]
+  },
+  {
+    name: 'pairPreviewRight',
+    desc: 'show the left image on the right',
     keysArr: [['ArrowRight']]
   },
   {
-    name: 'rgbText',
-    desc: 'display RGB values in pixel blocks',
-    keysArr: [['c']]
+    name: 'pairReset',
+    desc: 'reset the current pair',
+    keysArr: [[' ']]
   },
   {
-    name: 'compare',
-    desc: 'compare two image',
-    keysArr: [[ctrlOrCommand, 'x']]
+    name: 'reviewToggle',
+    desc: 'toggle proofing mode',
+    keysArr: [[ctrlOrCommand, 'r']]
   },
+  {
+    name: 'reviewNumbers',
+    desc: 'show or hide proofing annotation numbers',
+    keysArr: [[ctrlOrCommand, 'n']]
+  }
 ].map((item, index) => {
   item.index = index
   return item
@@ -201,6 +163,8 @@ export function handleEvent(event, callbackFnMap) {
   const hotkeyName = hotkeysMap.get(pressedKeysStr)
   const hotkeyEvent = callbackFnMap.get(hotkeyName)
   if (hotkeyName && hotkeyEvent) {
-    hotkeyEvent()
+    hotkeyEvent(event)
+    return true
   }
+  return false
 }

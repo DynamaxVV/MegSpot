@@ -23,15 +23,13 @@
       </div>
     </div>
     <AboutDialog ref="aboutDialog" />
-    <UpdateDialog ref="updateDialog" />
   </el-header>
 </template>
 <script>
 import AboutDialog from './AboutDialog'
-import UpdateDialog from './UpdateDialog'
 export default {
   name: 'AppHeader',
-  components: { AboutDialog, UpdateDialog },
+  components: { AboutDialog },
   data() {
     return {
       subNav: '',

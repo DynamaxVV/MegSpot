@@ -48,6 +48,30 @@
             :parentHeight="_height"
           />
           <canvas ref="canvas" :style="canvasSizeStyle"></canvas>
+          <div v-if="loadError" class="image-load-error">
+            <span>{{ $t('imageCenter.loadFailed') }}</span>
+            <div>
+              <el-button size="mini" type="primary" @click="retryImage">{{ $t('imageCenter.retry') }}</el-button>
+              <el-button size="mini" @click="returnToImageIndex">{{ $t('imageCenter.returnToFileSelect') }}</el-button>
+            </div>
+          </div>
+          <button
+            v-for="annotation in annotations"
+            v-if="imagePosition"
+            :key="annotation.id"
+            type="button"
+            class="review-marker"
+            :class="[
+              `review-marker-type-${annotation.type}`,
+              { active: annotation.id === activeAnnotationId }
+            ]"
+            :style="annotationStyle(annotation)"
+            :title="annotation.text"
+            :aria-label="`${annotation.number}: ${annotation.text}`"
+            @click.stop="$emit('annotation-select', annotation)"
+          >
+            {{ annotation.number }}
+          </button>
           <div v-if="triggerRGB || preference.showDot" ref="feedback" id="feedback" :style="feedbackStyle"></div>
           <div v-if="preference.showMousePos" v-show="mousePosInfo.x" class="mouse-position">
             <span>x={{ mousePosInfo.x.toFixed(2) }},y={{ mousePosInfo.y.toFixed(2) }}</span>
@@ -77,6 +101,7 @@ import chokidar from 'chokidar'
 import { getFileName } from '@/filter/get-file-name'
 import { decode, decodeImage, toRGBA8 } from 'utif2'
 import { useWorker } from '@/utils/worker'
+import { logCompareEvent, logDiagnosticError } from '@/utils/diagnosticLog'
 
 export default {
   components: {
@@ -112,6 +137,18 @@ export default {
       type: String,
       default: ''
     },
+    annotations: {
+      type: Array,
+      default: () => []
+    },
+    activeAnnotationId: {
+      type: String,
+      default: null
+    },
+    diagnosticContext: {
+      type: Object,
+      default: () => ({})
+    },
     // name: {
     //   type: String,
     //   default: ''
@@ -132,6 +169,9 @@ export default {
       wacther: undefined,
       loading: false,
       ready: false,
+      loadError: false,
+      imageLoadToken: 0,
+      imageLoadStartedAt: 0,
       header: null,
       canvas: null,
       maskDom: undefined,
@@ -147,6 +187,8 @@ export default {
       imgMatRequestId: null,
       resizeRequestId: null,
       imagePosition: null,
+      coverSnapshot: null,
+      coverHist: null,
       cachedPositionData: null,
       imgScale: 'N/A',
       scaleEditorVisible: false,
@@ -339,6 +381,8 @@ export default {
       this.canvas.height = 0
     }
     this.image = null
+    this.coverSnapshot = null
+    this.coverHist = null
     this.initFilters()
   },
   watch: {
@@ -644,17 +688,72 @@ export default {
       // }
       return
     },
+    getImageDiagnosticContext() {
+      return {
+        ...this.diagnosticContext,
+        path: this.path
+      }
+    },
+    logImageEvent(event, details = {}) {
+      if (!this.pairTaskMode) return
+      logCompareEvent(event, this.getImageDiagnosticContext(), details)
+    },
+    async finishImageLoad(token, initPosition, startedAt) {
+      if (this._destroyed || token !== this.imageLoadToken) return false
+      this.loading = false
+      this.ready = true
+      this.loadError = false
+      this.reDraw(initPosition)
+      this.logImageEvent('compare_canvas_ready')
+      this.logImageEvent('compare_image_load_success', { durationMs: Date.now() - startedAt })
+      return true
+    },
+    failImageLoad(error, token, startedAt, stage) {
+      if (this._destroyed || token !== this.imageLoadToken) return
+      this.loading = false
+      this.ready = false
+      this.loadError = true
+      const event = stage === 'decode' ? 'compare_image_decode_failed' : 'compare_image_load_failed'
+      logDiagnosticError('compare', event, error, this.getImageDiagnosticContext(), {
+        stage,
+        durationMs: Date.now() - startedAt
+      })
+    },
+    loadImageUrl(url) {
+      return new Promise((resolve, reject) => {
+        const image = new Image()
+        const timeout = setTimeout(() => reject(new Error('image_load_timeout')), 15000)
+        image.onload = () => {
+          clearTimeout(timeout)
+          resolve(image)
+        }
+        image.onerror = () => {
+          clearTimeout(timeout)
+          reject(new Error('image_load_failed'))
+        }
+        image.src = url
+      })
+    },
+    retryImage() {
+      this.logImageEvent('compare_user_action', { action: 'retry_image' })
+      this.initImage()
+    },
+    returnToImageIndex() {
+      this.logImageEvent('compare_user_action', { action: 'return_to_file_select' })
+      this.$router.push({ path: '/image/index' })
+    },
     resolvePath() {
       return new Promise((resolve) => {
         if (this.snapshotMode) {
           fetch(this.path)
-            .then(() => {
+            .then((response) => {
+              if (!response.ok) throw new Error(`snapshot_request_${response.status}`)
               resolve(this.path)
             })
             .catch((err) => {
               // TODO: A: reload后imageData为空，（从vuex）取imageData
               // B: 或退回文件浏览器页
-              console.log(err)
+              logDiagnosticError('compare', 'compare_snapshot_path_failed', err, this.getImageDiagnosticContext())
 
               // method A
               // const path = URL.createObjectURL(
@@ -666,6 +765,7 @@ export default {
               this.$router.push({
                 path: '/image/index'
               })
+              resolve(null)
             })
         } else {
           resolve(getImageUrlSyncNoCache(this.path)) //        'C:/Demo/1-1%20-%20副本.jpg'
@@ -688,10 +788,16 @@ export default {
       return _ctx.getImageData(0, 0, _canvas.width, _canvas.height)
     },
     async initImage(initPosition = true) {
+      const token = ++this.imageLoadToken
+      const startedAt = Date.now()
       this.ready = false
       this.loading = true
-      return new Promise(async (resolve, reject) => {
+      this.loadError = false
+      this.logImageEvent('compare_image_load_start')
+      let stage = 'resolve'
+      try {
         if (/tiff?$/.test(this.path)) {
+          stage = 'decode'
           const file = await fse.readFile(this.path)
           const arraybuffer = file.buffer
           const ifds = decode(arraybuffer)
@@ -700,33 +806,27 @@ export default {
           const imageData = toRGBA8(ifd)
           this.image = new Image(ifd.width, ifd.height)
           await this.initBitMap(imageData)
-          this.loading = false
-          this.ready = true
-          this.reDraw(initPosition)
-          resolve()
+          await this.finishImageLoad(token, initPosition, startedAt)
         } else {
           const url = await this.resolvePath()
+          if (!url) throw new Error('image_path_unavailable')
           const preloaded = imageCache.takePreloaded(url)
           if (preloaded && preloaded.loaded) {
+            stage = 'decode'
             this.image = preloaded.img
             await this.initBitMap()
-            this.loading = false
-            this.ready = true
-            this.reDraw(initPosition)
-            resolve()
+            await this.finishImageLoad(token, initPosition, startedAt)
           } else {
-            this.image = new Image()
-            this.image.onload = async () => {
-              await this.initBitMap()
-              this.loading = false
-              this.ready = true
-              this.reDraw(initPosition)
-              resolve()
-            }
-            this.image.src = url
+            stage = 'load'
+            this.image = await this.loadImageUrl(url)
+            stage = 'decode'
+            await this.initBitMap()
+            await this.finishImageLoad(token, initPosition, startedAt)
           }
         }
-      })
+      } catch (error) {
+        this.failImageLoad(error, token, startedAt, stage)
+      }
     },
     initCanvas() {
       if (this.canvas) {
@@ -766,9 +866,19 @@ export default {
         isBright: (0.299 * R + 0.587 * G + 0.114 * B) / 255 >= 0.8
       }
     },
+    annotationStyle(annotation) {
+      const position = this.imagePosition
+      if (!position) return { left: '0px', top: '0px' }
+      const opacity = Number(this.preference.annotationOpacity)
+      return {
+        left: `${position.x + annotation.x * position.width}px`,
+        top: `${position.y + annotation.y * position.height}px`,
+        opacity: Number.isFinite(opacity) ? Math.min(Math.max(opacity, 0), 100) / 100 : 1
+      }
+    },
     async drawRGBText() {
       const cv = this.$cv
-      if (this.preference.showRGBText && cv && this.ensureImageMat() && this.imagePosition && this.image && this.cs && this.imgScaleNum >= 42) {
+      if (this.preference.showRGBText && cv && this.ensureImageMat() && this.imagePosition && this.image && this.cs && this.imgScaleNum >= 20) {
         if (this.drawRGBTextReqId) {
           cancelAnimationFrame(this.drawRGBTextReqId)
           this.drawRGBTextReqId = null
@@ -830,10 +940,19 @@ export default {
       }
     },
     async drawImage(img = null) {
+      if (this.coverSnapshot) {
+        this.drawCover()
+        return
+      }
       let { x, y, width, height } = this.imagePosition || this.getImageInitPos(this.canvas, this.image)
       this.cs.clearRect(0, 0, this._width, this._height)
       this.cs.drawImage(img ?? this.bitMap, x, y, width, height)
       this.drawRGBText()
+    },
+    drawCover() {
+      if (!this.cs || !this.coverSnapshot) return
+      this.cs.clearRect(0, 0, this._width, this._height)
+      this.cs.drawImage(this.coverSnapshot, 0, 0, this._width, this._height)
     },
     handleClick() {
       this.triggerRGB && this.$refs['zoom-viewer']?.copyColor()
@@ -869,8 +988,10 @@ export default {
       console.log('changeZoom', data)
     },
     pickColor({ status }) {
-      this.$refs['zoom-viewer']?.changeCanvas()
       this.triggerRGB = status
+      if (status) {
+        this.$nextTick(() => this.changeRGBA())
+      }
     },
     changeCanvasStyle(newStyle) {
       // FIXME: 具体的值没有被广播
@@ -896,8 +1017,8 @@ export default {
         mousePos = e.mousePos
         this.mousePos = mousePos
       }
-      this.preference.showMousePos && this.changeMousePosInfo(mousePos)
-      this.preference.showScale && this.changeRGBA()
+      this.changeMousePosInfo(mousePos)
+      this.changeRGBA()
     },
     changeRGBA() {
       if (!this.triggerRGB) return
@@ -932,14 +1053,17 @@ export default {
       }
     },
     // 外部直接调用
-    setCoverStatus({ snapShot, hist }, status) {
+    setCoverStatus({ snapShot, hist } = {}, status) {
       if (status) {
-        this.cs.clearRect(0, 0, this._width, this._height)
-        this.cs.drawImage(snapShot, 0, 0, this._width, this._height)
+        this.coverSnapshot = snapShot || null
+        this.coverHist = hist || null
+        this.drawCover()
         if (this.$refs['hist-container'].visible) {
           this.maskDom = hist
         }
       } else {
+        this.coverSnapshot = null
+        this.coverHist = null
         this.maskDom = null
         this.drawImage()
       }
@@ -1262,6 +1386,64 @@ export default {
       .canvas {
         vertical-align: middle;
         font-size: 0;
+      }
+
+      .review-marker {
+        position: absolute;
+        z-index: 4;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        transform: translate(-50%, -50%);
+        border: 1px solid #fff;
+        border-radius: 50%;
+        background: rgba(64, 158, 255, 0.92);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+        color: #fff;
+        cursor: pointer;
+        font-size: 11px;
+        line-height: 20px;
+        text-align: center;
+      }
+
+      .review-marker-type-2 {
+        background: rgba(230, 126, 34, 0.94);
+      }
+
+      .review-marker:hover {
+        z-index: 5;
+        transform: translate(-50%, -50%) scale(1.18);
+      }
+
+      .review-marker.active {
+        z-index: 6;
+        transform: translate(-50%, -50%) scale(1.32);
+        border-width: 2px;
+        box-shadow:
+          0 0 0 2px rgba(64, 158, 255, 0.72),
+          0 0 10px rgba(64, 158, 255, 0.78),
+          0 2px 6px rgba(0, 0, 0, 0.52);
+        font-weight: 700;
+      }
+
+      .review-marker-type-2.active {
+        box-shadow:
+          0 0 0 2px rgba(230, 126, 34, 0.78),
+          0 0 10px rgba(230, 126, 34, 0.82),
+          0 2px 6px rgba(0, 0, 0, 0.52);
+      }
+
+      .image-load-error {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #606266;
       }
 
       /** default canvas background */

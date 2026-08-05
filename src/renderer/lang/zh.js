@@ -1,7 +1,9 @@
 export default {
   common: {
     supportTypes: '支持多种文件类型:',
-    desc: '当前版本为小v魔改版，为图片审较场景做了大量适配优化。  \nMegSpot是一款跨平台的本地应用，旨在为用户提供本地图片对比、视频对比、图片定制处理等便捷功能。  \n可进入QQ交流群(782365536)了解详情、获取最新资讯（此为原项目发布者的交流群）。',
+    desc: '当前版本为小v魔改版，为图片审较场景做了大量适配优化。',
+    originalProjectInfo: '点击展开原项目信息',
+    originalDesc: 'MegSpot是一款跨平台的本地应用，旨在为用户提供本地图片对比、视频对比、图片定制处理等便捷功能。\n可进入QQ交流群(782365536)了解详情、获取最新资讯（此为原项目发布者的交流群）。',
     manual: '使用手册',
     hotKey: '快捷键',
     please: '请',
@@ -73,26 +75,20 @@ export default {
   hotkey: {
     desc: '描述',
     key: '快捷键',
-    gotoCompare: '跳转到对比页面',
-    emptyAll: '清空所有已选图像或视频',
     back: '返回文件选择页面',
-    gallery: '打开/关闭画廊',
-    previousGroup: '前一组',
-    nextGroup: '下一组',
-    previousFrame: '前一帧',
-    nextFrame: '下一帧',
-    togglePlay: '播放/暂停',
-    top: '向上叠加对比',
-    left: '向左叠加对比',
-    right: '向右叠加对比',
-    bottom: '向下叠加对比',
     moveUp: '向上移动',
     moveLeft: '向左移动',
     moveRight: '向右移动',
     moveDown: '向下移动',
     pickColor: '打开/关闭取色器',
     rgbText: '启用/关闭RGB数值在每个像素块中的显示',
-    compare: "对两张图像进行拖拽对比"
+    pairPrevious: '上一组配对',
+    pairNext: '下一组配对',
+    pairPreviewLeft: '在左侧暂时显示右图',
+    pairPreviewRight: '在右侧暂时显示左图',
+    pairReset: '复位当前配对',
+    reviewToggle: '打开/关闭审校模式',
+    reviewNumbers: '显示/隐藏审校标注序号'
   },
   dashboard: {
     compareTask: {
@@ -114,7 +110,8 @@ export default {
       buttons: {
         selectImages: '选择图片',
         selectFolders: '选择文件夹',
-        recentFolder: '上次打开的文件夹'
+        recentFolder: '上次打开的文件夹',
+        reorderSource: '拖拽调整来源顺序'
       },
       dialog: {
         file: '选择图片',
@@ -185,9 +182,23 @@ export default {
           single: '单页',
           split: '分割'
         },
+        review: {
+          toggle: '审校模式',
+          collapse: '收起审校列表',
+          expand: '展开审校列表',
+          title: '审校译文 ({count})',
+          empty: '当前图片没有可用的翻译标注。',
+          emptyHelp: '请将翻译标注文件放置到图片文件夹内',
+          showNumbers: '显示标注序号',
+          types: {
+            1: '框内',
+            2: '框外'
+          }
+        },
         placeholders: {
           unmatchedBaseline: '当前组缺少基准图',
-          unmatchedComparison: '当前组缺少对比图'
+          unmatchedComparison: '当前组缺少对比图',
+          usePrevious: '使用前一组图片'
         }
       }
     },
@@ -292,6 +303,9 @@ export default {
     frameSteps2: '逐帧对比\n向后播放: Cmd/Ctrl + n',
     fullsize: '原图',
     originalMode: '原图模式',
+    loadFailed: '图片加载失败',
+    retry: '重新加载',
+    returnToFileSelect: '返回文件选择',
     adaptive: '自适应',
     align: '对齐(大小不变)',
     align2: '对齐(大小相同)',
@@ -308,7 +322,8 @@ export default {
     backgroundMode: '背景模式',
     scaleOpt: '缩放选项',
     showScale: '显示缩放比例',
-    showMousePos: '显示光标位置'
+    showMousePos: '显示光标位置',
+    annotationOpacity: '标注序号透明度'
   },
   imageDragDropCompare: {
     hideLine: '隐藏文件名和比较线',
@@ -371,7 +386,7 @@ export default {
     defaultSortTip: '根据文件名排序'
   },
   gallery: {
-    showTip: '显示/隐藏当前图像序列\n快捷键: cmd/ctrl+f',
+    showTip: '显示/隐藏当前图像序列',
     clear: '清空',
     clearTip: '是否清空所有已选文件',
     enableNameSort: '名称排序',
@@ -384,7 +399,20 @@ export default {
     settings: '设置',
     version: '版本信息',
     hotkey: '快捷键',
-    log: '日志'
+    log: '日志',
+    logPage: {
+      eyebrow: '诊断中心',
+      title: '应用日志',
+      description: '查看最近的运行记录，或打开日志文件夹提交给维护者。',
+      openFolder: '打开日志文件夹',
+      fileLabel: '日志文件位置',
+      recentTitle: '最近日志',
+      recentHint: '显示最后 100 行',
+      refresh: '刷新',
+      viewerLabel: '最近应用日志',
+      empty: '当前没有可显示的日志。',
+      readError: '读取日志失败'
+    }
   },
   histogram: {
     title: '直方图',

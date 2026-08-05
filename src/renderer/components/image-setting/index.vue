@@ -32,6 +32,17 @@
               <span>{{ $t('imageSetting.showMousePos') }}：</span>
               <el-switch v-model="showMousePos"></el-switch>
             </div>
+            <div flex="main:justify cross:center" class="setting-item annotation-opacity-setting">
+              <span>{{ $t('imageSetting.annotationOpacity') }}：</span>
+              <el-slider
+                class="annotation-opacity-slider"
+                v-model="annotationOpacity"
+                :min="0"
+                :max="100"
+                :step="1"
+                :format-tooltip="formatOpacityTooltip"
+              ></el-slider>
+            </div>
             <div v-if="$route.path.includes('video')" flex="main:justify" class="setting-item">
               <span>{{ $t('video.dynamicPickColor') }}:</span>
               <el-switch v-model="dynamicPickColor"></el-switch>
@@ -211,6 +222,9 @@ export default {
   methods: {
     ...mapActions(['setPreference', 'setHistConfig']),
     ...videoMapActions(['setVideoConfig']),
+    formatOpacityTooltip(value) {
+      return `${value}%`
+    },
     handleRadiusChange(newVal, oldVal) {
       this.$bus.$emit('radius', newVal)
     },
@@ -322,6 +336,15 @@ export default {
       },
       set(newVal) {
         this.setPreference({ showScale: newVal })
+      }
+    },
+    annotationOpacity: {
+      get() {
+        const value = Number(this.preference.annotationOpacity)
+        return Number.isFinite(value) ? Math.min(Math.max(value, 0), 100) : 100
+      },
+      set(newVal) {
+        this.setPreference({ annotationOpacity: Number(newVal) })
       }
     },
     backgroundStyle: {
@@ -444,6 +467,28 @@ export default {
   .setting-group {
     .setting-item {
       margin-top: 10px;
+    }
+
+    .annotation-opacity-setting {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      box-sizing: border-box;
+      gap: 12px;
+
+      > span {
+        flex: 1 1 auto;
+        min-width: 0;
+        white-space: nowrap;
+      }
+
+      .annotation-opacity-slider {
+        flex: 0 1 80px;
+        width: 80px;
+        max-width: 100%;
+        min-width: 80px;
+      }
     }
   }
 

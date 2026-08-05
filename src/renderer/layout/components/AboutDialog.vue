@@ -7,10 +7,14 @@
             <div class="introduction">
               {{ $t('common.desc') }}
             </div>
-            <div class="handbook" flex="main:left cross:center">
-              <span class="link" @click="clickManual">{{ $t('common.manual') }}</span>
-            </div>
-            <img src="../../assets/images/group-qrcode.png" alt style="width: 300px" />
+            <el-collapse v-model="originalInfoExpanded" class="original-info">
+              <el-collapse-item :title="$t('common.originalProjectInfo')" name="original-project-info">
+                <div class="introduction">
+                  {{ $t('common.originalDesc') }}
+                </div>
+                <img src="../../assets/images/group-qrcode.png" alt style="width: 300px" />
+              </el-collapse-item>
+            </el-collapse>
           </div>
         </el-tab-pane>
         <el-tab-pane name="settings" :label="$t('help.settings')">
@@ -39,6 +43,27 @@
             </el-form-item>
             <el-form-item :label="$t('general.colorPickerShowPos')">
               <el-switch v-model="colorPickerShowPos" />
+            </el-form-item>
+            <el-form-item class="annotation-opacity-item" :label="$t('imageSetting.annotationOpacity')">
+              <el-slider
+                class="annotation-opacity-slider"
+                v-model="annotationOpacity"
+                :min="0"
+                :max="100"
+                :step="1"
+                :format-tooltip="formatOpacityTooltip"
+              ></el-slider>
+            </el-form-item>
+            <el-form-item label="对比背景色">
+              <div flex="cross:center" style="gap: 8px">
+                <el-select v-model="compareBgColor" style="width: 120px" placeholder="默认" clearable>
+                  <el-option label="默认" value=""></el-option>
+                  <el-option label="白色" value="#ffffff"></el-option>
+                  <el-option label="黑色" value="#1e1e1e"></el-option>
+                </el-select>
+                <el-color-picker v-model="compareBgColor" :predefine="['#ffffff', '#1e1e1e', '#2d2d2d', '#3c3c3c']" />
+              </div>
+              <div style="font-size: 12px; color: #909399; margin-top: 4px">选空或取消选择恢复默认</div>
             </el-form-item>
             <el-form-item :label="$t('general.importOrExportSettings')">
               <el-button @click="settingsImport" type="primary">{{ $t('general.import') }}</el-button>
@@ -152,18 +177,45 @@
           </vxe-table>
         </el-tab-pane>
         <el-tab-pane name="log" :label="$t('help.log')">
-          <el-row>
-            <el-col :span="3" style="line-height: 32px">log path</el-col>
-            <el-col :span="21">
-              <ShowPath :path="logPath"></ShowPath>
-            </el-col>
-          </el-row>
-          <el-row class="log-container" style="flex-grow: 1; overflow: auto">
-            <el-col :span="3" style="line-height: 32px">log txt</el-col>
-            <el-col :span="21">
-              <span style="white-space: break-spaces">{{ logTxt }}</span>
-            </el-col>
-          </el-row>
+          <section class="log-page">
+            <header class="log-page-header">
+              <div>
+                <div class="log-eyebrow">{{ $t('help.logPage.eyebrow') }}</div>
+                <h3>{{ $t('help.logPage.title') }}</h3>
+                <p>{{ $t('help.logPage.description') }}</p>
+              </div>
+              <el-button type="primary" size="mini" class="log-open-button" @click="openLogFolder">
+                <i class="el-icon-folder-opened"></i>
+                {{ $t('help.logPage.openFolder') }}
+              </el-button>
+            </header>
+
+            <div class="log-file-card">
+              <div class="log-file-icon"><i class="el-icon-document"></i></div>
+              <div class="log-file-content">
+                <div class="log-file-label">{{ $t('help.logPage.fileLabel') }}</div>
+                <div class="log-file-path" :title="logPath">{{ logPath }}</div>
+              </div>
+            </div>
+
+            <div class="log-viewer-header">
+              <div>
+                <span class="log-viewer-title">{{ $t('help.logPage.recentTitle') }}</span>
+                <span class="log-viewer-hint">{{ $t('help.logPage.recentHint') }}</span>
+              </div>
+              <el-button type="text" size="mini" icon="el-icon-refresh" @click="refreshLogs">
+                {{ $t('help.logPage.refresh') }}
+              </el-button>
+            </div>
+
+            <div class="log-viewer" role="log" :aria-label="$t('help.logPage.viewerLabel')">
+              <pre v-if="logTxt">{{ logTxt }}</pre>
+              <div v-else class="log-empty">
+                <i class="el-icon-document"></i>
+                <span>{{ $t('help.logPage.empty') }}</span>
+              </div>
+            </div>
+          </section>
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -175,21 +227,19 @@ const { dialog } = require('@electron/remote')
 const { shell, ipcRenderer } = require('electron')
 import fse from 'fs-extra'
 import _ from 'lodash'
-import ShowPath from '@/components/show-path'
 const appVersion = require('@/../../package.json').version
 const { releaseNotes, releaseDate } = require('@/../../package.json').build.releaseInfo
 import { createNamespacedHelpers } from 'vuex'
 const { mapGetters, mapActions } = createNamespacedHelpers('preferenceStore')
 import { i18nRender } from '@/lang'
 import { ATTRS_KEYS, SPECIAL_KEYS, PRESET_KEYS_MAP, DEFAULT_HOTKEYS } from '@/tools/hotkey'
-import { trackEvent } from '@/utils/analyze'
 
 export default {
   name: 'AboutDialog',
-  components: { ShowPath },
   data() {
     return {
       activeTab: 'introduction',
+      originalInfoExpanded: [],
       activeRowId: '',
       temporaryKeysEleMap: new Map(),
       temporaryKeysArr: [],
@@ -284,6 +334,32 @@ export default {
           colorPickerShowPos: arg
         })
       }
+    },
+    annotationOpacity: {
+      get() {
+        const value = Number(this.preference.annotationOpacity)
+        return Number.isFinite(value) ? Math.min(Math.max(value, 0), 100) : 100
+      },
+      set(arg) {
+        this.setPreference({ annotationOpacity: Number(arg) })
+      }
+    },
+    compareBgColor: {
+      get() {
+        return this.preference.compareBgColor
+      },
+      set(arg) {
+        const color = arg || ''
+        this.setPreference({ compareBgColor: color })
+        const defaultBg = {
+          mode: 'default',
+          style: 'background: #e3e7e9; background-image: linear-gradient(45deg, #f6fafc 25%, transparent 0), linear-gradient(45deg, transparent 75%, #f6fafc 0), linear-gradient(45deg, #f6fafc 25%, transparent 0), linear-gradient(45deg, transparent 75%, #f6fafc 0); background-position: 0 0, 10px 10px, 10px 10px, 20px 20px; background-size: 20px 20px;'
+        }
+        const bg = color
+          ? { mode: color === '#ffffff' ? 'light' : 'dark', style: `background: ${color};` }
+          : defaultBg
+        this.setPreference({ background: bg })
+      }
     }
   },
   watch: {
@@ -301,17 +377,6 @@ export default {
           })
         }
       }
-    },
-    visible: {
-      handler: function (newVal) {
-        newVal &&
-          trackEvent('page_view', {
-            category: 'help',
-            view: 'help',
-            from: this.$route?.path
-          })
-      },
-      immediate: true
     }
   },
   mounted() {
@@ -320,15 +385,7 @@ export default {
       ipcRenderer.send(this.visible ? 'put-in-tray' : 'tray-removed')
     })
     this.logPath = this.$log.transports.file.getFile().path
-    try {
-      const logs = this.$log.transports.file.readAllLogs()
-      const lastLog = logs[0]?.lines.slice(-100)
-      lastLog.forEach((logLine) => {
-        this.logTxt += logLine + '\r\n'
-      })
-    } catch (e) {
-      console.error('get log txt error', e.messages)
-    }
+    this.refreshLogs()
     // check hotkeys
     if (this.hotkeys.length === 0) {
       this.hotkeys = JSON.parse(JSON.stringify(DEFAULT_HOTKEYS))
@@ -337,6 +394,25 @@ export default {
   },
   methods: {
     ...mapActions(['setPreference', 'setHotkey']),
+    refreshLogs() {
+      this.logTxt = ''
+      try {
+        const logs = this.$log.transports.file.readAllLogs()
+        const lastLog = (logs[0]?.lines || []).slice(-100)
+        lastLog.forEach((logLine) => {
+          this.logTxt += logLine + '\r\n'
+        })
+      } catch (e) {
+        console.error('get log txt error', e.messages)
+        this.logTxt = `${this.$t('help.logPage.readError')}: ${e.message || e}`
+      }
+    },
+    openLogFolder() {
+      if (this.logPath) shell.showItemInFolder(this.logPath)
+    },
+    formatOpacityTooltip(value) {
+      return `${value}%`
+    },
     checkSystemLanguage() {
       console.log('navigator', navigator, navigator.language)
       if (this.appLanguage !== 'zh' && !this.neverCheckLanguage && navigator?.language?.includes('zh')) {
@@ -388,9 +464,6 @@ export default {
     },
     show() {
       this.visible = true
-    },
-    clickManual() {
-      shell.openExternal('https://github.com/MegEngine/MegSpot/wiki')
     },
     settingsImport() {
       dialog
@@ -602,23 +675,192 @@ export default {
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow: hidden;
+  }
+}
+
+.log-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
+  padding: 4px 6px 6px;
+  background: #f7f8fa;
+  color: #181725;
+}
+
+.log-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.log-eyebrow {
+  color: #1067d1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.log-page-header h3 {
+  margin: 3px 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.log-page-header p {
+  max-width: 520px;
+  margin: 0;
+  color: #82848a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.log-open-button {
+  flex: 0 0 auto;
+  margin-top: 8px;
+}
+
+.log-file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(36, 46, 66, 0.06);
+}
+
+.log-file-icon {
+  display: flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #eaf2ff;
+  color: #1067d1;
+  font-size: 18px;
+}
+
+.log-file-content {
+  min-width: 0;
+}
+
+.log-file-label {
+  margin-bottom: 3px;
+  color: #82848a;
+  font-size: 11px;
+}
+
+.log-file-path {
+  overflow: hidden;
+  color: #181725;
+  font-family: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+}
+
+.log-viewer-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.log-viewer-hint {
+  margin-left: 8px;
+  color: #9a9ca3;
+  font-size: 11px;
+}
+
+.log-viewer {
+  flex: 1;
+  min-height: 160px;
+  overflow: auto;
+  padding: 14px 16px;
+  border: 1px solid #29354a;
+  border-radius: 8px;
+  background: #161d29;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.log-viewer pre {
+  margin: 0;
+  color: #d8e2f0;
+  font-family: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  font-size: 11px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-empty {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #8795aa;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .log-page-header {
+    flex-direction: column;
+  }
+
+  .log-open-button {
+    margin-top: 0;
   }
 }
 
 .introduction {
   padding: 10px;
   text-align: left;
+  white-space: pre-line;
   word-break: break-word;
 }
 
-.handbook {
-  padding: 10px;
-  height: 40px;
-  font-size: 14px;
+.original-info {
+  margin-top: 12px;
+}
 
-  .link {
-    margin: 4px;
-    color: #409eff;
+.annotation-opacity-slider {
+  width: 120px;
+  max-width: 100%;
+}
+
+.annotation-opacity-item {
+  display: flex;
+  align-items: center;
+
+  ::v-deep .el-form-item__label {
+    flex: 0 0 140px;
+    width: 140px;
+    padding-right: 12px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  ::v-deep .el-form-item__content {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: 0 !important;
   }
 }
 

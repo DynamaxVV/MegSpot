@@ -1,6 +1,7 @@
 import fs from 'fs-extra'
 import path from 'path'
 import { dedupeImageEntries, filterDirectChildImageEntries } from './imagePairing.js'
+import { parseTranslationText } from './translationAnnotations'
 
 const toIgnored = (input, reason) => ({ input, reason })
 
@@ -57,14 +58,38 @@ const readFolderItems = async (folderPath) => {
   return filterDirectChildImageEntries(entries.filter(Boolean), folderPath)
 }
 
+const readFolderTranslation = async (folderPath) => {
+  const names = await fs.readdir(folderPath).catch(() => [])
+  const candidates = []
+  for (const name of names) {
+    if (!/\.txt$/i.test(name)) continue
+    const filePath = path.resolve(folderPath, name)
+    const stat = await statSafe(filePath)
+    if (stat && stat.isFile()) candidates.push({ filePath, stat })
+  }
+  if (candidates.length !== 1) return null
+  const { filePath, stat } = candidates[0]
+  const content = await fs.readFile(filePath, 'utf8').catch(() => '')
+  const annotations = parseTranslationText(content)
+  if (!Object.keys(annotations).length) return null
+  return {
+    path: filePath,
+    lastModifyTime: stat.mtime.getTime(),
+    annotations
+  }
+}
+
 const buildSourcePayload = async (source, sourceIndex) => {
   const stat = await statSafe(source.path)
   if (!stat) {
     return { ignored: toIgnored(source.path, 'missing') }
   }
   if (stat.isDirectory()) {
+    const translation = await readFolderTranslation(source.path)
     return {
-      source: toDescriptor(source.path, 'folder'),
+      source: translation
+        ? { ...toDescriptor(source.path, 'folder'), translation }
+        : toDescriptor(source.path, 'folder'),
       items: (await readFolderItems(source.path)).map((item) => ({ ...item, sourceIndex }))
     }
   }
@@ -146,20 +171,38 @@ export const hasItemPathSetChanged = (nextItems = [], currentItems = []) => {
   return nextPaths.some((itemPath) => !currentSet.has(itemPath))
 }
 
+const getTranslationFingerprint = (source) => {
+  const translation = source && source.translation
+  return translation ? `${translation.path}:${translation.lastModifyTime}` : ''
+}
+
+export const hasTranslationSetChanged = (nextSources = [], currentSources = []) => {
+  if (!Array.isArray(currentSources)) return false
+  const next = (Array.isArray(nextSources) ? nextSources : []).map(getTranslationFingerprint)
+  const current = (Array.isArray(currentSources) ? currentSources : []).map(getTranslationFingerprint)
+  if (next.length !== current.length) return true
+  return next.some((fingerprint, index) => fingerprint !== current[index])
+}
+
 const freshnessInFlight = new Map()
 
-const buildFreshnessKey = (sources = [], storedItems = []) => JSON.stringify({
+const buildFreshnessKey = (sources = [], storedItems = [], storedSources = null) => JSON.stringify({
   sources: (Array.isArray(sources) ? sources : []).map((source) => normalizeSourceInput(source) || source),
-  stored: toAbsoluteItemPathSet(storedItems)
+  stored: toAbsoluteItemPathSet(storedItems),
+  storedSources: (Array.isArray(storedSources) ? storedSources : null)?.map((source) => ({
+    path: source && source.path,
+    translation: getTranslationFingerprint(source)
+  }))
 })
 
-export const inspectImageSourceFreshness = async (sources = [], storedItems = []) => {
-  const key = buildFreshnessKey(sources, storedItems)
+export const inspectImageSourceFreshness = async (sources = [], storedItems = [], storedSources = null) => {
+  const key = buildFreshnessKey(sources, storedItems, storedSources)
   if (freshnessInFlight.has(key)) {
     return freshnessInFlight.get(key)
   }
   const task = rebuildItemsFromSources(sources).then((scan) => ({
-    stale: hasItemPathSetChanged(scan.items, storedItems),
+    stale: hasItemPathSetChanged(scan.items, storedItems)
+      || hasTranslationSetChanged(scan.sources, storedSources),
     scan
   })).finally(() => {
     freshnessInFlight.delete(key)

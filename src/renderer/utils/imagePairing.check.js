@@ -5,6 +5,7 @@ import path from 'path'
 import {
   dedupeImageEntries,
   filterDirectChildImageEntries,
+  findPreviousRowImage,
   pairImageEntries,
   rebuildCompareTask,
   relocateCurrentRowIndex,
@@ -58,6 +59,53 @@ const rows = pairImageEntries(
   { field: 'name', order: 'asc' }
 )
 
+const copiedNameRows = pairImageEntries(
+  [{ path: '/left/01.jpg', name: '01.jpg' }],
+  [{ path: '/right/01-copy.jpg', name: '01 拷贝.jpg' }]
+)
+assert.strictEqual(copiedNameRows[0].left.path, '/left/01.jpg')
+assert.strictEqual(copiedNameRows[0].right.path, '/right/01-copy.jpg')
+
+const compositeRows = pairImageEntries(
+  [
+    { path: '/left/091.jpeg', name: '091.jpeg' },
+    { path: '/left/092+093.jpeg', name: '092+093.jpeg' },
+    { path: '/left/094.jpeg', name: '094.jpeg' }
+  ],
+  [
+    { path: '/right/091.jpeg', name: '091.jpeg' },
+    { path: '/right/092.jpeg', name: '092.jpeg' },
+    { path: '/right/093.jpeg', name: '093.jpeg' },
+    { path: '/right/094.jpeg', name: '094.jpeg' }
+  ]
+)
+assert.deepStrictEqual(compositeRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['091.jpeg', '091.jpeg'],
+  ['092+093.jpeg', '092.jpeg'],
+  [null, '093.jpeg'],
+  ['094.jpeg', '094.jpeg']
+])
+
+const reversedCompositeRows = pairImageEntries(
+  [
+    { path: '/left/091.jpeg', name: '091.jpeg' },
+    { path: '/left/092.jpeg', name: '092.jpeg' },
+    { path: '/left/093.jpeg', name: '093.jpeg' },
+    { path: '/left/094.jpeg', name: '094.jpeg' }
+  ],
+  [
+    { path: '/right/091.jpeg', name: '091.jpeg' },
+    { path: '/right/092+093.jpeg', name: '092+093.jpeg' },
+    { path: '/right/094.jpeg', name: '094.jpeg' }
+  ]
+)
+assert.deepStrictEqual(reversedCompositeRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['091.jpeg', '091.jpeg'],
+  ['092.jpeg', '092+093.jpeg'],
+  ['093.jpeg', null],
+  ['094.jpeg', '094.jpeg']
+])
+
 assert.deepStrictEqual(rows.map((row) => [row.left && row.left.path, row.right && row.right.path]), [
   ['/left/a-1.JPG', '/right/A-1.webp'],
   ['/left/B-02.png', '/right/b-02.jpeg'],
@@ -81,6 +129,9 @@ assert.deepStrictEqual(sourceScopedRows.map((row) => [row.left && row.left.path,
   ['/left/folder-2/b.png', null],
   [null, '/right/folder-3/b.png']
 ])
+
+assert.strictEqual(findPreviousRowImage(sourceScopedRows, 2, 'left').path, '/left/folder-2/b.png')
+assert.strictEqual(findPreviousRowImage(sourceScopedRows, 0, 'right'), null)
 
 const rebuilt = rebuildCompareTask({
   leftItems,

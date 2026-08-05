@@ -19,9 +19,6 @@
           class="tool-item"
           :disabled="!videoList.length"
           @click="compare"
-          v-on:keyup.meta.enter="compare"
-          v-on:keydown.tab="compare"
-          :title="`${$t('common.hotKey')}：cmd/ctrl+enter`"
         >
           {{ $t('general.compare') }}
         </el-button>
@@ -79,7 +76,6 @@ import { createNamespacedHelpers } from 'vuex'
 import SelectedBtn from '@/components/selected-btn'
 const { mapGetters, mapActions } = createNamespacedHelpers('videoStore')
 import addDragFolderListener from '@/utils/dragFolder.js'
-import { handleEvent } from '@/tools/hotkey'
 
 Vue.use(VueSplit)
 export default {
@@ -90,24 +86,20 @@ export default {
       isDraging: false,
       checkedFiles: [],
       dragFiles: [],
-      splitHeight: '200px',
-      hotkeyEvents: undefined
+      splitHeight: '200px'
     }
   },
   computed: {
     ...mapGetters(['videoList', 'collections', 'videoFolders', 'expandData', 'currentPath'])
   },
   mounted() {
-    this.initHotkeyEvents()
     this.calcSplitHeight()
     addDragFolderListener(document.getElementById('folderTree'), false)
   },
   activated() {
-    window.addEventListener('keydown', this.handleHotKey, true)
     window.addEventListener('resize', this.handleResize, true)
   },
   deactivated() {
-    window.removeEventListener('keydown', this.handleHotKey, true)
     window.removeEventListener('resize', this.handleResize, true)
   },
   beforeDestroy() {
@@ -126,25 +118,6 @@ export default {
     handleResize: debounce(300, function () {
       this.calcSplitHeight()
     }),
-    initHotkeyEvents() {
-      this.hotkeyEvents = new Map([
-        [
-          'gotoCompare',
-          () => {
-            this.compare()
-          }
-        ],
-        [
-          'emptyAll',
-          () => {
-            this.emptyVideos()
-          }
-        ]
-      ])
-    },
-    handleHotKey(event) {
-      handleEvent(event, this.hotkeyEvents)
-    },
     calcSplitHeight() {
       this.splitHeight = window.document.body.clientHeight - 56 - 40 + 'px'
     },

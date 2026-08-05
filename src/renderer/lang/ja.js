@@ -1,7 +1,9 @@
 export default {
   common: {
     supportTypes: '対応ファイルタイプ:',
-    desc: 'MegSpotは、画像比較、ビデオ比較、画像カスタマイズ処理などの便利な機能をユーザーに提供するように設計されたクロスプラットフォームのネイティブアプリケーションです。 \r\nqqグループ（782365536）に参加して、詳細を確認し、最新情報を入手してください。',
+    desc: 'このバージョンには、画像レビューのワークフロー向けの調整が含まれています。',
+    originalProjectInfo: '元のプロジェクト情報',
+    originalDesc: 'MegSpotは、画像比較、ビデオ比較、画像カスタマイズ処理などの便利な機能をユーザーに提供するように設計されたクロスプラットフォームのネイティブアプリケーションです。\nqqグループ（782365536）に参加して、詳細を確認し、最新情報を入手してください。',
     manual: 'マニュアル',
     hotKey: 'ホットキー',
     please: 'お願いします',
@@ -74,26 +76,20 @@ export default {
   hotkey: {
     desc: '説明',
     key: 'ショートカットキー',
-    gotoCompare: '比較ページにジャンプします',
-    emptyAll: '選択したすべての画像またはビデオを空にします',
     back: 'ファイル選択ページに戻る',
-    gallery: 'ギャラリーを開く/閉じる',
-    previousGroup: '前のグループ',
-    nextGroup: '次のグループ',
-    previousFrame: '前のフレーム',
-    nextFrame: '次のフレーム',
-    togglePlay: '再生/一時停止',
-    top: '比較のために積み重ねる',
-    left: '左にコントラストをオーバーレイ',
-    right: '右にコントラストを重ねる',
-    bottom: '比較のために積み重ねる',
     moveUp: '上に移動',
     moveLeft: '左に移動',
     moveRight: '向右移动',
     moveDown: '下に移動',
     pickColor: 'カラーピッカーのオン/オフを切り替えます',
     rgbText: '各ピクセルブロックのRGB値の表示を有効/無効にします。',
-    compare: "ドラッグアンドドロップで2つの画像を比較します"
+    pairPrevious: '前のペア',
+    pairNext: '次のペア',
+    pairPreviewLeft: '左側に右の画像を一時表示',
+    pairPreviewRight: '右側に左の画像を一時表示',
+    pairReset: '現在のペアをリセット',
+    reviewToggle: '校正モードのオン/オフ',
+    reviewNumbers: '校正注釈番号の表示/非表示'
   },
   dashboard: {
     compareTask: {
@@ -115,7 +111,8 @@ export default {
       buttons: {
         selectImages: '画像を選択',
         selectFolders: 'フォルダを選択',
-        recentFolder: '前回開いたフォルダ'
+        recentFolder: '前回開いたフォルダ',
+        reorderSource: 'ドラッグしてソースの順序を変更'
       },
       dialog: {
         file: '画像を選択',
@@ -186,9 +183,23 @@ export default {
           single: '単一表示',
           split: '分割'
         },
+        review: {
+          toggle: '校正モード',
+          collapse: '校正リストを閉じる',
+          expand: '校正リストを開く',
+          title: '翻訳 ({count})',
+          empty: 'この画像に利用できる翻訳注釈はありません。',
+          emptyHelp: '翻訳注釈ファイルを画像フォルダ内に配置してください。',
+          showNumbers: '注釈番号を表示',
+          types: {
+            1: '枠内',
+            2: '枠外'
+          }
+        },
         placeholders: {
           unmatchedBaseline: 'このペアには基準画像がありません',
-          unmatchedComparison: 'このペアには比較画像がありません'
+          unmatchedComparison: 'このペアには比較画像がありません',
+          usePrevious: '前の画像を使用'
         }
       }
     },
@@ -289,6 +300,9 @@ export default {
     horizontalFlip: '左右に反転',
     fullsize: 'フルサイズ',
     originalMode: '原寸モード',
+    loadFailed: '画像の読み込みに失敗しました',
+    retry: '再読み込み',
+    returnToFileSelect: 'ファイル選択に戻る',
     adaptive: '全体を見る',
     align: '整列（サイズは同じままです）',
     align2: '整列（同じサイズ）',
@@ -306,7 +320,8 @@ export default {
     backgroundMode: 'バックグラウンド モード',
     scaleOpt: '尺度オプション',
     showScale: 'スケールのヒントを表示',
-    showMousePos: 'マウスの位置を表示'
+    showMousePos: 'マウスの位置を表示',
+    annotationOpacity: '注釈番号の透明度'
   },
   imageDragDropCompare: {
     hideLine: 'ファイル名と比較行を非表示にする',
@@ -369,7 +384,7 @@ export default {
     defaultSortTip: '名前でファイルを並べ替える'
   },
   gallery: {
-    showTip: '現在のイメージ シーケンスの表示/非表示\nショートカット キー: cmd/ctrl+f',
+    showTip: '現在のイメージ シーケンスの表示/非表示',
     clear: 'クリア',
     clearTip: '選択したファイルをすべてクリアしますか',
     enableNameSort: '名前順',
@@ -382,7 +397,20 @@ export default {
     settings: '設定',
     version: 'バージョン',
     hotkey: 'ショートカット',
-    log: 'ログ'
+    log: 'ログ',
+    logPage: {
+      eyebrow: '診断センター',
+      title: 'アプリケーションログ',
+      description: '最近の実行記録を確認するか、サポート用にログフォルダーを開きます。',
+      openFolder: 'ログフォルダーを開く',
+      fileLabel: 'ログファイルの場所',
+      recentTitle: '最近のログ',
+      recentHint: '最後の 100 行',
+      refresh: '更新',
+      viewerLabel: '最近のアプリケーションログ',
+      empty: '表示できるログがありません。',
+      readError: 'ログの読み込みに失敗しました'
+    }
   },
   histogram: {
     title: 'ヒストグラム',

@@ -24,12 +24,16 @@ const preferenceStore = {
       // 取色器中是否显示鼠标坐标
       colorPickerShowPos: true,
       showRGBText: false,
+      // 图片对比页面背景色
+      compareBgColor: '',
       // 每次手动按键时图像的移动距离, 默认为100像素
       moveDistance: 100,
       // 视频控制条位置 fixed(固定在toolbar) / float (悬浮球)
       videoProcessBarStyle: 'fixed',
       showScale: true,
       showMousePos: true,
+      // 成对图片审校标注标记的透明度（百分比）
+      annotationOpacity: 100,
       hotkeys: [],
       layouts: DEFAULT_LAYOUTS
     },
@@ -70,6 +74,7 @@ const preferenceStore = {
     uuid: (state) => state.uuid,
     gamma: (state) => state.gamma,
     preference: (state) => state.preference,
+    compareBgColor: (state) => state.preference.compareBgColor || '',
     histConfig: (state) => state.histConfig,
     hotkeysMap: (state) => state.hotkeysMap,
     colorLevelSetting: (state) => state.colorLevelSetting

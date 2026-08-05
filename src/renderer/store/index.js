@@ -1,7 +1,6 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import { isExist } from '../utils/file'
-import _ from 'lodash'
 
 // 注释这个的原因是因为会导致vuex操作失败
 import PersistedState from 'vuex-electron-store'
@@ -28,10 +27,13 @@ const checkStore = function (pathList = [], removeFnName = '') {
 }
 
 const checkHotkeysStore = () => {
-  const validHotkeys = preferenceStore.preference.hotkeys.length
-    ? _.intersectionBy(preferenceStore.preference.hotkeys, DEFAULT_HOTKEYS, 'name')
-    : []
-  const newHotkeys = _.unionBy(validHotkeys, DEFAULT_HOTKEYS, 'name')
+  const savedHotkeys = new Map(preferenceStore.preference.hotkeys.map((hotkey) => [hotkey.name, hotkey]))
+  const newHotkeys = DEFAULT_HOTKEYS.map((defaultHotkey) => {
+    const savedHotkey = savedHotkeys.get(defaultHotkey.name)
+    return savedHotkey
+      ? { ...defaultHotkey, keysArr: savedHotkey.keysArr }
+      : defaultHotkey
+  })
   store.dispatch('preferenceStore/setPreference', {
     hotkeys: newHotkeys
   })

@@ -1,7 +1,7 @@
 // 这里是定义菜单的地方，详情请查看 https://electronjs.org/docs/api/menu
-const { dialog, shell } = require('electron')
+const { dialog } = require('electron')
 const os = require('os')
-const { version, homepage } = require('../../../package.json')
+const { version } = require('../../../package.json')
 import { mainWindow } from '../services/windowManager'
 const menu = [
   {
@@ -62,12 +62,7 @@ function info() {
         process.versions.v8
       }\n当前系统：${os.type()} ${os.arch()} ${os.release()}`,
       noLink: true,
-      buttons: ['查看仓库地址', '确定']
-    })
-    .then(({ response, checkboxChecked }) => {
-      if (response === 0) {
-        shell.openExternal(homepage)
-      }
+      buttons: ['确定']
     })
     .catch((err) => {
       console.error(err)
