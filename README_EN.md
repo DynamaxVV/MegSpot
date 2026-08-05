@@ -66,7 +66,7 @@ The project uses the legacy Webpack 4 and Electron toolchain. Use Node.js <code>
 ```bash
 corepack enable
 corepack prepare yarn@1.22.21 --activate
-yarn install --frozen-lockfile
+yarn install --frozen-lockfile --ignore-engines
 yarn dev
 ```
 

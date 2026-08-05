@@ -37,7 +37,7 @@ corepack prepare yarn@1.22.21 --activate
 安装依赖时使用锁文件：
 
 ~~~bash
-yarn install --frozen-lockfile
+yarn install --frozen-lockfile --ignore-engines
 ~~~
 
 不要在未确认 Node 版本的情况下升级依赖或重新生成 <code>yarn.lock</code>。本项目使用 Webpack 4，较新的 Node/OpenSSL 组合可能导致加密初始化或压缩阶段失败。

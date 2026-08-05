@@ -66,7 +66,7 @@ MegSpot - vv版是面向图像结果审校、版本差异检查和标注复核�
 ```bash
 corepack enable
 corepack prepare yarn@1.22.21 --activate
-yarn install --frozen-lockfile
+yarn install --frozen-lockfile --ignore-engines
 yarn dev
 ```
 
