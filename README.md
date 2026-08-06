@@ -13,11 +13,25 @@
   <a href="https://github.com/DynamaxVV/MegSpot/releases"><img src="https://img.shields.io/github/v/release/DynamaxVV/MegSpot?include_prereleases&label=release" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache 2.0 license"></a>
 </p>
+MegSpot - vv版是面向汉化嵌字与审校场景的本地图片对比桌面工具。
 
-MegSpot - vv版是面向图像结果审校、版本差异检查和标注复核的本地图片对比桌面工具。它将两组图片或图片文件夹组织成可追溯的对比任务，重点优化批量配对、三种对比布局、文件变化保护、TXT 标注审校和大图/快速翻页时的资源管理，适合不希望上传素材、需要逐组核对图片的本地工作流。
+它将两组图片或图片文件夹组织成可追溯的对比任务，重点优化批量配对、三种对比布局、文件变化保护、TXT 标注审校和大图/快速翻页时的资源管理，适合不希望上传素材、需要逐组核对图片的本地工作流。
 
 本仓库是由 [vv](https://github.com/DynamaxVV) 维护的非官方二次开发版本，基于上游 [MegEngine/MegSpot](https://github.com/MegEngine/MegSpot)。它不代表上游项目或上游组织；上游代码、版权和第三方许可仍以仓库中的许可文件为准。
 
+## 界面预览
+
+首页提供“基准图”和“对比图”两侧来源管理，支持拖拽上传，并在下方显示配对预览：
+
+<p align="center">
+  <img width="900" src="./首页图.png" alt="MegSpot 成对图片对比首页">
+</p>
+
+进入对比工作区后，可以并排查看两侧图片，并使用单页、分割、标注审校和图片调整工具：
+
+<p align="center">
+  <img width="900" src="./对比页图.png" alt="MegSpot 图片对比工作区">
+</p>
 ## 适用场景
 
 - **结果审校**：逐组比较基准图与生成图、修改前后图片或不同版本的渲染结果。
@@ -55,7 +69,9 @@ MegSpot - vv版是面向图像结果审校、版本差异检查和标注复核�
 
 ## 当前功能边界
 
-当前公开功能聚焦本地图片对比。图像快照（<code>.mgt</code>）、GIF 导出、视频预览/截屏对比/帧同步、HEVC/H.265 播放、Linux 命令行启动和多语言界面不属于当前公开能力；是否纳入后续版本，以具体代码和 Release notes 为准。
+当前公开功能聚焦本地图片对比。
+
+暂不支持：图像快照（<code>.mgt</code>）、GIF 导出、视频预览/截屏对比/帧同步、HEVC/H.265 播放、Linux 命令行启动和多语言界面不属于当前公开能力；是否纳入后续版本，以具体代码和 Release notes 为准。
 
 ## 下载、构建与发布
 
