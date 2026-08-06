@@ -13,6 +13,7 @@
   <a href="https://github.com/DynamaxVV/MegSpot/releases"><img src="https://img.shields.io/github/v/release/DynamaxVV/MegSpot?include_prereleases&label=release" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache 2.0 license"></a>
 </p>
+
 MegSpot - vv版是面向汉化嵌字与审校场景的本地图片对比桌面工具。
 
 它将两组图片或图片文件夹组织成可追溯的对比任务，重点优化批量配对、三种对比布局、文件变化保护、TXT 标注审校和大图/快速翻页时的资源管理，适合不希望上传素材、需要逐组核对图片的本地工作流。
