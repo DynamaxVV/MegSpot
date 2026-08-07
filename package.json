@@ -48,7 +48,8 @@
       "output": "build"
     },
     "files": [
-      "dist/electron/**/*"
+      "dist/electron/**/*",
+      "!**/node_modules/electron{,/**/*}"
     ],
     "extraResources": [
       "LICENSE",

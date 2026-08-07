@@ -91,6 +91,15 @@ jobs:
       - name: Build platform artifact
         run: npm run build:${{ matrix.target }} -- --publish never
 
+      - name: Verify packaged dependencies
+        shell: bash
+        run: |
+          if find build -type d -path '*/resources/app.asar.unpacked/*/node_modules/electron/dist' -print -quit | grep -q .; then
+            echo 'Unexpected nested Electron runtime found in packaged application.'
+            find build -type d -path '*/resources/app.asar.unpacked/*/node_modules/electron/dist' -print
+            exit 1
+          fi
+
       - name: Upload platform artifact
         uses: actions/upload-artifact@v4
         with:
