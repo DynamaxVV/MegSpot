@@ -35,6 +35,12 @@
                 <el-option :label="$t('general.thumbnail')" value="thumbnail"></el-option>
               </el-select>
             </el-form-item>
+            <el-form-item :label="$t('general.baselineSide')">
+              <el-select v-model="baselineSide">
+                <el-option :label="$t('general.leftSide')" value="left"></el-option>
+                <el-option :label="$t('general.rightSide')" value="right"></el-option>
+              </el-select>
+            </el-form-item>
             <el-form-item :label="$t('general.colorPickerMode')">
               <el-select v-model="colorPickerMode">
                 <el-option value="rgb"></el-option>
@@ -313,6 +319,16 @@ export default {
         this.setPreference({
           defaultFileListShowType: arg
         })
+      }
+    },
+    baselineSide: {
+      get() {
+        return this.preference.baselineSide === 'right' ? 'right' : 'left'
+      },
+      set(arg) {
+        const baselineSide = arg === 'right' ? 'right' : 'left'
+        this.setPreference({ baselineSide })
+        this.$store.dispatch('imageStore/refreshCompareTask', { baselineSide })
       }
     },
     colorPickerMode: {

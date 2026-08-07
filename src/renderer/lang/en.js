@@ -33,6 +33,9 @@ export default {
     select: 'select',
     selected: 'selected',
     language: 'Language',
+    baselineSide: 'Baseline side',
+    leftSide: 'Left',
+    rightSide: 'Right',
     import: 'import',
     export: 'export',
     videoProcessBarStyle: 'Video Control Bar Position',
@@ -183,6 +186,10 @@ export default {
           single: 'Single',
           split: 'Split'
         },
+        singleMode: {
+          missingBaseline: 'The baseline image is missing; showing the comparison image.',
+          missingComparison: 'The comparison image is missing; showing the baseline image.'
+        },
         review: {
           toggle: 'Proofing',
           collapse: 'Collapse proofing list',
@@ -190,6 +197,12 @@ export default {
           title: 'Translations ({count})',
           empty: 'No translation annotations are available for this image.',
           emptyHelp: 'Place the translation annotation file inside the image folder.',
+          emptyStates: {
+            'lp-empty': { title: 'This image is listed in the LP annotation document, but has no annotations.', help: 'The page is still included in the LP review order.' },
+            'lp-missing': { title: 'This image is not listed in the LP annotation document.', help: 'Check whether this page should be added to the LP document.' },
+            'no-lp': { title: 'No translation annotations are available for this image.', help: 'Place the LP annotation document inside the image folder.' },
+            annotated: { title: '', help: '' }
+          },
           showNumbers: 'Show annotation numbers',
           types: {
             1: 'Inside box',

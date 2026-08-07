@@ -7,6 +7,7 @@ const preferenceStore = {
   state: {
     preference: {
       appLanguage: 'en',
+      baselineSide: 'left',
       neverCheckLanguage: false, // 不再检查系统语言(设置为中文)
       showTitle: true,
       background: {

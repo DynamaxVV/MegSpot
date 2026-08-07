@@ -35,6 +35,7 @@ const createCompareTask = () => ({
   mode: DEFAULT_COMPARE_MODE,
   started: false,
   dirty: false,
+  baselineSide: 'left',
   version: 0
 })
 
@@ -53,6 +54,7 @@ const normalizeCompareTask = (task = {}, fallbackTask = createCompareTask()) => 
   })
   compareTask.started = typeof compareTask.started === 'boolean' ? compareTask.started : false
   compareTask.dirty = typeof compareTask.dirty === 'boolean' ? compareTask.dirty : false
+  compareTask.baselineSide = compareTask.baselineSide === 'right' ? 'right' : 'left'
   compareTask.version = Number.isFinite(compareTask.version) ? compareTask.version : 0
   return compareTask
 }

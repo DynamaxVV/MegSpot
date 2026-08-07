@@ -124,7 +124,7 @@
                   @annotation-select="selectAnnotation"
                 />
                 <div v-else class="panel-placeholder">
-                  <span>{{ $t('dashboard.compareTask.workspace.placeholders.unmatchedBaseline') }}</span>
+                  <span>{{ $t(`dashboard.compareTask.workspace.placeholders.unmatched${getVisualSideRole('left')}`) }}</span>
                   <el-button
                     v-if="previousImage('left')"
                     type="text"
@@ -139,12 +139,12 @@
             <div class="pair-panel" @mouseenter="hoveredSide = 'right'" @mouseleave="clearHoveredSide('right')">
               <div class="panel-body">
                 <ImageCanvas
-                  v-if="displayedRight && panelReady"
+                  v-if="rightDisplayImage && panelReady"
                   ref="rightCanvas"
-                  :key="`right-${currentRow.id}-${displayedRight.path}`"
+                  :key="`${isSingleMode ? 'single' : 'right'}-${currentRow.id}-${rightDisplayImage.path}`"
                   :index="1"
-                  :path="displayedRight.path"
-                  :displayName="displayedRight.displayName"
+                  :path="rightDisplayImage.path"
+                  :displayName="rightDisplayImage.displayName"
                   :pairTaskMode="true"
                   :diagnosticContext="getImageDiagnosticContext('right')"
                   :annotations="reviewMode && showAnnotationNumbers ? reviewAnnotations : []"
@@ -153,8 +153,11 @@
                   :_height="panelSize.height"
                   @annotation-select="selectAnnotation"
                 />
-                <div v-else class="panel-placeholder">
-                  <span>{{ $t('dashboard.compareTask.workspace.placeholders.unmatchedComparison') }}</span>
+                <div v-if="isSingleMode && singleModeNotice && singleModeNoticeVisible" class="single-mode-notice">
+                  {{ $t(`dashboard.compareTask.workspace.singleMode.${singleModeNotice}`) }}
+                </div>
+                <div v-if="!rightDisplayImage || !panelReady" class="panel-placeholder">
+                  <span>{{ $t(`dashboard.compareTask.workspace.placeholders.unmatched${getVisualSideRole('right')}`) }}</span>
                   <el-button
                     v-if="previousImage('right')"
                     type="text"
@@ -176,13 +179,14 @@
           class="review-panel"
           :class="{ open: reviewPanelOpen }"
           :style="{ width: `${reviewPanelOpen ? reviewPanelWidth : reviewPanelHandleWidth}px` }"
+          @transitionend="handleReviewPanelTransition"
         >
           <button
             type="button"
             class="review-panel-toggle"
             :title="$t(`dashboard.compareTask.workspace.review.${reviewPanelOpen ? 'collapse' : 'expand'}`)"
             :aria-label="$t(`dashboard.compareTask.workspace.review.${reviewPanelOpen ? 'collapse' : 'expand'}`)"
-            @click="reviewPanelOpen = !reviewPanelOpen"
+            @click="toggleReviewPanel"
           >
             <i :class="reviewPanelOpen ? 'el-icon-arrow-right' : 'el-icon-arrow-left'"></i>
           </button>
@@ -198,9 +202,12 @@
               <span>{{ $t('dashboard.compareTask.workspace.review.showNumbers') }}</span>
             </div>
             <div ref="annotationList" class="annotation-list">
-              <div v-if="!reviewAnnotations.length" class="annotation-empty">
-                <div>{{ $t('dashboard.compareTask.workspace.review.empty') }}</div>
-                <div>{{ $t('dashboard.compareTask.workspace.review.emptyHelp') }}</div>
+              <div
+                v-if="!reviewAnnotations.length"
+                :class="['annotation-empty', `annotation-empty-${reviewCoverageStatus}`]"
+              >
+                <div>{{ $t(`dashboard.compareTask.workspace.review.emptyStates.${reviewCoverageStatus}.title`) }}</div>
+                <div>{{ $t(`dashboard.compareTask.workspace.review.emptyStates.${reviewCoverageStatus}.help`) }}</div>
               </div>
               <template v-else>
                 <button
@@ -240,7 +247,10 @@ import ImageDragDropCompare from './ImageDragDropCompare'
 import { getImageUrlSyncNoCache } from '@/utils/image'
 import { inspectImageSourceFreshness } from '@/utils/imageComparisonSources'
 import { findPreviousRowImage } from '@/utils/imagePairing'
-import { getTranslationForImage } from '@/utils/translationAnnotations'
+import {
+  getTranslationForImage,
+  normalizeTranslationImageName
+} from '@/utils/translationAnnotations'
 import { handleEvent, PRESET_KEYS_MAP } from '@/tools/hotkey'
 import {
   clearOperationId,
@@ -252,7 +262,10 @@ import {
 } from '@/utils/diagnosticLog'
 
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
-const { mapActions: preferenceMapActions } = createNamespacedHelpers('preferenceStore')
+const {
+  mapActions: preferenceMapActions,
+  mapGetters: preferenceMapGetters
+} = createNamespacedHelpers('preferenceStore')
 const REVIEW_PANEL_HANDLE_WIDTH = 14
 
 export default {
@@ -283,6 +296,8 @@ export default {
       reviewPanelResizeState: null,
       showAnnotationNumbers: true,
       selectedAnnotationId: null,
+      singleModeNoticeVisible: false,
+      singleModeNoticeTimer: null,
       hotkeyDownEvents: new Map(),
       hotkeyUpEvents: new Map(),
       operationId: '',
@@ -291,6 +306,7 @@ export default {
   },
   computed: {
     ...mapGetters(['compareTask', 'compareRows', 'currentCompareRow', 'imageConfig']),
+    ...preferenceMapGetters(['preference']),
     compareBgColor() {
       return this.$store.getters['preferenceStore/compareBgColor']
     },
@@ -345,6 +361,9 @@ export default {
     showSplitFallbackNotice() {
       return this.compareMode === 'split' && !this.splitAvailable
     },
+    baselineVisualSide() {
+      return this.preference.baselineSide === 'right' ? 'right' : 'left'
+    },
     keyboardHint() {
       const hotkeys = new Map(this.$store.state.preferenceStore.preference.hotkeys.map((item) => [item.name, item]))
       const formatHotkey = (name) => (hotkeys.get(name)?.keysArr || [])
@@ -358,17 +377,49 @@ export default {
     displayedRight() {
       return this.displayedImage('right')
     },
+    singleDisplay() {
+      if (!this.isSingleMode || !this.currentRow) return null
+      return this.currentRow.right ? this.displayedRight : this.displayedLeft
+    },
+    rightDisplayImage() {
+      return this.isSingleMode ? this.singleDisplay : this.displayedRight
+    },
+    singleModeNotice() {
+      if (!this.isSingleMode || !this.currentRow) return ''
+      if (!this.currentRow.left) return 'missingBaseline'
+      if (!this.currentRow.right) return 'missingComparison'
+      return ''
+    },
     reviewAnnotations() {
-      if (!this.currentRow) return []
-      const leftAnnotations = getTranslationForImage(
-        this.findSourceForItem('left', this.currentRow.left),
-        this.currentRow.left && this.currentRow.left.path
-      )
-      if (leftAnnotations.length) return leftAnnotations
-      return getTranslationForImage(
-        this.findSourceForItem('right', this.currentRow.right),
-        this.currentRow.right && this.currentRow.right.path
-      )
+      return this.reviewTarget ? this.reviewTarget.annotations : []
+    },
+    reviewTarget() {
+      if (!this.currentRow) return null
+      const visualSides = [this.baselineVisualSide, this.baselineVisualSide === 'left' ? 'right' : 'left']
+      const targets = visualSides.map((side) => {
+        const item = this.currentRow[side]
+        const source = this.findSourceForItem(side, item)
+        const annotations = getTranslationForImage(source, item && item.path)
+        const imageKey = normalizeTranslationImageName(item && item.name)
+        const imageOrder = source && source.translation && source.translation.imageOrder
+        return {
+          annotations,
+          listed: Array.isArray(imageOrder) && imageOrder
+            .some((name) => normalizeTranslationImageName(name) === imageKey),
+          source
+        }
+      })
+      return targets.find((target) => target.annotations.length)
+        || targets.find((target) => target.listed)
+        || targets.find((target) => target.source && target.source.translation)
+        || null
+    },
+    reviewCoverageStatus() {
+      if (!this.reviewTarget || !this.reviewTarget.source || !this.reviewTarget.source.translation) {
+        return 'no-lp'
+      }
+      if (this.reviewTarget.annotations.length) return 'annotated'
+      return this.reviewTarget.listed ? 'lp-empty' : 'lp-missing'
     },
     reviewTitle() {
       return this.$t('dashboard.compareTask.workspace.review.title', {
@@ -399,6 +450,7 @@ export default {
   beforeDestroy() {
     this.logWorkspaceEvent('compare_workspace_unmount')
     this.deactivateWorkspace()
+    clearTimeout(this.singleModeNoticeTimer)
     clearOperationId(this.operationId)
   },
   methods: {
@@ -482,6 +534,16 @@ export default {
         this.stopReviewPanelResize()
         this.cancelPreview()
       }
+      this.scheduleReviewLayoutSync()
+    },
+    showSingleModeNotice() {
+      clearTimeout(this.singleModeNoticeTimer)
+      this.singleModeNoticeVisible = Boolean(this.isSingleMode && this.singleModeNotice)
+      if (this.singleModeNoticeVisible) {
+        this.singleModeNoticeTimer = setTimeout(() => {
+          this.singleModeNoticeVisible = false
+        }, 4000)
+      }
     },
     toggleAnnotationNumbers() {
       this.showAnnotationNumbers = !this.showAnnotationNumbers
@@ -504,13 +566,17 @@ export default {
       })
     },
     getRowStatus(row) {
-      if (!row || !row.left) {
+      if (!row || !row[this.baselineVisualSide]) {
         return 'missingBaseline'
       }
-      if (!row.right) {
+      const comparisonSide = this.baselineVisualSide === 'left' ? 'right' : 'left'
+      if (!row[comparisonSide]) {
         return 'missingComparison'
       }
       return 'ready'
+    },
+    getVisualSideRole(side) {
+      return side === this.baselineVisualSide ? 'Baseline' : 'Comparison'
     },
     displayedImage(side) {
       if (!this.currentRow) return null
@@ -588,14 +654,38 @@ export default {
       this.logUserAction('reset_current_group')
       this.cancelPreview()
       this.$bus.$emit('image_handleSelect', null)
-      if (this.showSideBySide) {
-        const canvasRefs = ['leftCanvas', 'rightCanvas']
-        canvasRefs.forEach((refName) => {
-          this.$refs[refName] && this.$refs[refName].reset(false)
+      this.$nextTick(() => window.requestAnimationFrame(() => {
+        this.syncPanelSize()
+        this.$nextTick(() => {
+          if (this.showSideBySide) {
+            const canvasRefs = ['leftCanvas', 'rightCanvas']
+            canvasRefs.forEach((refName) => {
+              this.$refs[refName] && this.$refs[refName].reset(false)
+            })
+          }
+          if (this.showSplitCompare && this.$refs.splitCompare) {
+            this.$refs.splitCompare.reset()
+          }
         })
-      }
+      }))
+    },
+    toggleReviewPanel() {
+      this.reviewPanelOpen = !this.reviewPanelOpen
+      this.scheduleReviewLayoutSync()
+    },
+    handleReviewPanelTransition() {
+      this.scheduleReviewLayoutSync()
+    },
+    scheduleReviewLayoutSync() {
+      this.$nextTick(() => {
+        this.syncReviewLayout()
+        window.requestAnimationFrame(this.syncReviewLayout)
+      })
+    },
+    syncReviewLayout() {
+      this.syncPanelSize()
       if (this.showSplitCompare && this.$refs.splitCompare) {
-        this.$refs.splitCompare.reset()
+        this.$refs.splitCompare.refreshLayout()
       }
     },
     startReviewPanelResize(event) {
@@ -778,11 +868,13 @@ export default {
     handleSourceChange(changedPath) {
       const resolvedPath = path.resolve(String(changedPath))
       this.logWorkspaceEvent('compare_source_change', { path: resolvedPath })
-      if (this.shouldMarkDirtyForPath(resolvedPath)) {
-        this.patchCompareTask({ dirty: true })
-        this.warnDirty()
-      }
       if (this.isCurrentRowPath(resolvedPath)) {
+        const canvasRefs = [this.$refs.leftCanvas, this.$refs.rightCanvas]
+        canvasRefs.forEach((canvas) => {
+          if (canvas && canvas.path && path.resolve(String(canvas.path)) === resolvedPath) {
+            canvas.initImage(false)
+          }
+        })
         this.$nextTick(() => {
           this.updateSplitCompare()
         })
@@ -937,6 +1029,7 @@ export default {
       handler(value, previousValue) {
         this.cancelPreview()
         this.selectedAnnotationId = null
+        this.showSingleModeNotice()
         this.updateSplitCompare()
         this.logWorkspaceEvent('compare_row_change', {
           previousRowId: previousValue && previousValue.id,
@@ -957,6 +1050,7 @@ export default {
     compareMode(value, previousValue) {
       this.cancelPreview()
       this.$nextTick(this.syncPanelSize)
+      this.showSingleModeNotice()
       if (value !== previousValue) {
         this.logWorkspaceEvent('compare_mode_change', { from: previousValue, to: value })
       }
@@ -1184,6 +1278,16 @@ export default {
     line-height: 1.5;
   }
 
+  .annotation-empty-lp-empty {
+    color: #8a6d1d;
+    background: #fffaf0;
+  }
+
+  .annotation-empty-lp-missing {
+    color: #a94442;
+    background: #fff5f5;
+  }
+
   .annotation-empty > div + div {
     margin-top: 4px;
     color: #a0a3a8;
@@ -1283,6 +1387,22 @@ export default {
     justify-content: center;
     gap: 2px;
     color: $labelColor;
+  }
+
+  .single-mode-notice {
+    position: absolute;
+    top: 42px;
+    left: 50%;
+    z-index: 1;
+    padding: 4px 10px;
+    transform: translateX(-50%);
+    border: 1px solid #f3d19e;
+    border-radius: 4px;
+    background: rgba(255, 247, 230, 0.94);
+    color: #8a5a00;
+    font-size: 12px;
+    pointer-events: none;
+    white-space: nowrap;
   }
 
   .row-list {

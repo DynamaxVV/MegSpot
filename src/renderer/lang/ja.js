@@ -33,6 +33,9 @@ export default {
     select: '選択する',
     selected: '選択ファイル',
     language: '言語',
+    baselineSide: '基準画像の位置',
+    leftSide: '左側',
+    rightSide: '右側',
     import: 'インポート',
     export: 'エクスポート',
     videoProcessBarStyle: 'ビデオコントロールバーの位置',
@@ -183,6 +186,10 @@ export default {
           single: '単一表示',
           split: '分割'
         },
+        singleMode: {
+          missingBaseline: '基準画像がないため、比較画像を表示しています。',
+          missingComparison: '比較画像がないため、基準画像を表示しています。'
+        },
         review: {
           toggle: '校正モード',
           collapse: '校正リストを閉じる',
@@ -190,6 +197,12 @@ export default {
           title: '翻訳 ({count})',
           empty: 'この画像に利用できる翻訳注釈はありません。',
           emptyHelp: '翻訳注釈ファイルを画像フォルダ内に配置してください。',
+          emptyStates: {
+            'lp-empty': { title: 'この画像はLP注釈ドキュメントに含まれていますが、注釈がありません。', help: 'このページはLPの順序に従って校正対象に含まれます。' },
+            'lp-missing': { title: 'この画像はLP注釈ドキュメントに含まれていません。', help: 'このページをLPドキュメントに追加する必要があるか確認してください。' },
+            'no-lp': { title: 'この画像に利用できる翻訳注釈はありません。', help: 'LP注釈ドキュメントを画像フォルダ内に配置してください。' },
+            annotated: { title: '', help: '' }
+          },
           showNumbers: '注釈番号を表示',
           types: {
             1: '枠内',

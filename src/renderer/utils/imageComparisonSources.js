@@ -1,5 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
+import crypto from 'crypto'
 import { dedupeImageEntries, filterDirectChildImageEntries } from './imagePairing.js'
 import { parseTranslationText } from './translationAnnotations'
 
@@ -70,12 +71,14 @@ const readFolderTranslation = async (folderPath) => {
   if (candidates.length !== 1) return null
   const { filePath, stat } = candidates[0]
   const content = await fs.readFile(filePath, 'utf8').catch(() => '')
-  const annotations = parseTranslationText(content)
-  if (!Object.keys(annotations).length) return null
+  const translation = parseTranslationText(content)
+  if (!translation.imageOrder.length) return null
   return {
     path: filePath,
     lastModifyTime: stat.mtime.getTime(),
-    annotations
+    contentHash: crypto.createHash('md5').update(content, 'utf8').digest('hex'),
+    annotations: translation.annotations,
+    imageOrder: translation.imageOrder
   }
 }
 
@@ -129,8 +132,9 @@ const collectSourcePayload = async (rawSources = []) => {
       acc.ignored.push(result.ignored)
       return acc
     }
+    const sourceIndex = acc.sources.length
     acc.sources.push(result.source)
-    acc.items.push(...result.items)
+    acc.items.push(...result.items.map((item) => ({ ...item, sourceIndex })))
     return acc
   }, { sources: [], items: [], ignored })
 }
@@ -173,7 +177,7 @@ export const hasItemPathSetChanged = (nextItems = [], currentItems = []) => {
 
 const getTranslationFingerprint = (source) => {
   const translation = source && source.translation
-  return translation ? `${translation.path}:${translation.lastModifyTime}` : ''
+  return translation ? `${translation.path}:${translation.contentHash || ''}` : ''
 }
 
 export const hasTranslationSetChanged = (nextSources = [], currentSources = []) => {

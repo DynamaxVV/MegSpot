@@ -32,6 +32,9 @@ export default {
     select: '选择',
     selected: '已选',
     language: '语言',
+    baselineSide: '基准图位置',
+    leftSide: '左侧',
+    rightSide: '右侧',
     import: '导入',
     export: '导出',
     videoProcessBarStyle: '视频控制条位置',
@@ -182,6 +185,10 @@ export default {
           single: '单页',
           split: '分割'
         },
+        singleMode: {
+          missingBaseline: '当前组缺少基准图，已显示对比图。',
+          missingComparison: '当前组缺少对比图，已显示基准图。'
+        },
         review: {
           toggle: '审校模式',
           collapse: '收起审校列表',
@@ -189,6 +196,12 @@ export default {
           title: '审校译文 ({count})',
           empty: '当前图片没有可用的翻译标注。',
           emptyHelp: '请将翻译标注文件放置到图片文件夹内',
+          emptyStates: {
+            'lp-empty': { title: 'LP 标注文档已包含此图片，但没有可用标注。', help: '该页仍按 LP 页序参与审校。' },
+            'lp-missing': { title: '此图片未被 LP 标注文档收录。', help: '请确认 LP 标注文档是否需要补充该页。' },
+            'no-lp': { title: '当前图片没有可用的翻译标注。', help: '请将 LP 标注文档放置到图片文件夹内。' },
+            annotated: { title: '', help: '' }
+          },
           showNumbers: '显示标注序号',
           types: {
             1: '框内',

@@ -1,4 +1,5 @@
 import path from 'path'
+import { normalizeTranslationImageName } from './translationAnnotations'
 
 const NAME_COLLATOR = new Intl.Collator('zh', {
   numeric: true,
@@ -89,6 +90,59 @@ const sortRowsByLogicalName = (rows, leftSort, rightSort, leftSorted, rightSorte
       return (leftSort.order === 'desc' ? -result : result) || left.index - right.index
     })
     .map((item) => item.row)
+}
+
+const findLpCandidate = (imageName, entries, usedPaths) => {
+  const exactKey = normalizeTranslationImageName(imageName)
+  const exact = entries.find((entry) => !usedPaths.has(entry.path)
+    && normalizeTranslationImageName(entry.name) === exactKey)
+  if (exact) return exact
+  const relaxedKey = normalizeBaseName(imageName)
+  return entries.find((entry) => !usedPaths.has(entry.path)
+    && normalizeBaseName(entry.name) === relaxedKey) || null
+}
+
+const getLpOrder = (translation) => (translation && Array.isArray(translation.imageOrder)
+  ? translation.imageOrder
+  : [])
+
+const isReleasePageRow = (row) => {
+  const entry = row && (row.left || row.right)
+  return /^999/.test(normalizeBaseName(entry && entry.name))
+}
+
+const applyLpOrder = (rows, leftEntries, rightEntries, leftSource, rightSource, baselineSide) => {
+  const leftOrder = getLpOrder(leftSource && leftSource.translation)
+  const rightOrder = getLpOrder(rightSource && rightSource.translation)
+  const baselineIsRight = baselineSide === 'right'
+  const baselineOrder = baselineIsRight ? rightOrder : leftOrder
+  const comparisonOrder = baselineIsRight ? leftOrder : rightOrder
+  const ownerEntries = baselineOrder.length
+    ? (baselineIsRight ? rightEntries : leftEntries)
+    : (baselineIsRight ? leftEntries : rightEntries)
+  const fallbackEntries = baselineOrder.length
+    ? (baselineIsRight ? leftEntries : rightEntries)
+    : (baselineIsRight ? rightEntries : leftEntries)
+  const order = baselineOrder.length ? baselineOrder : comparisonOrder
+  if (!order.length) return rows
+  const usedPaths = new Set()
+  const priorityRows = []
+  order.forEach((imageName) => {
+    const candidate = findLpCandidate(imageName, ownerEntries, usedPaths)
+      || findLpCandidate(imageName, fallbackEntries, usedPaths)
+    if (!candidate) return
+    usedPaths.add(candidate.path)
+    const rowIndex = rows.findIndex((row) => (row.left && row.left.path === candidate.path)
+      || (row.right && row.right.path === candidate.path))
+    if (rowIndex < 0 || priorityRows.some((item) => item.index === rowIndex)) return
+    priorityRows.push({ index: rowIndex, row: rows[rowIndex] })
+  })
+  if (!priorityRows.length) return rows
+  const priorityIndexes = new Set(priorityRows.map((item) => item.index))
+  const remainingRows = rows.filter((row, index) => !priorityIndexes.has(index))
+  const releaseRows = remainingRows.filter(isReleasePageRow)
+  const regularRows = remainingRows.filter((row) => !isReleasePageRow(row))
+  return priorityRows.map((item) => item.row).concat(releaseRows, regularRows)
 }
 
 const isSupportedImagePath = (filePath = '') => IMAGE_FILE_RE.test(String(filePath).split('?')[0])
@@ -183,7 +237,10 @@ const pairImageEntriesInScope = (
   leftEntries = [],
   rightEntries = [],
   leftSort = DEFAULT_SORT_CONFIG,
-  rightSort = DEFAULT_SORT_CONFIG
+  rightSort = DEFAULT_SORT_CONFIG,
+  leftSource = null,
+  rightSource = null,
+  baselineSide = 'left'
 ) => {
   const leftSorted = sortImageEntries(leftEntries, leftSort)
   const rightSorted = sortImageEntries(rightEntries, rightSort)
@@ -205,13 +262,7 @@ const pairImageEntriesInScope = (
     return rightSorted[rightIndex]
   })
   applyCompositeMatches(leftSorted, rightSorted, nameMatches, matchedRight)
-  const remainingLeft = []
   const remainingRight = []
-  nameMatches.forEach((right, index) => {
-    if (!right) {
-      remainingLeft.push(index)
-    }
-  })
   rightSorted.forEach((entry, index) => {
     if (!matchedRight.has(index)) {
       remainingRight.push(entry)
@@ -222,11 +273,11 @@ const pairImageEntriesInScope = (
       if (nameMatches[index]) {
         return createRow(left, nameMatches[index])
       }
-      const nextRight = remainingRight[remainingLeft.indexOf(index)] || null
-      return createRow(left, nextRight)
+      return createRow(left, null)
     })
-    .concat(remainingRight.slice(remainingLeft.length).map((right) => createRow(null, right)))
-  return sortRowsByLogicalName(rows, leftSort, rightSort, leftSorted, rightSorted)
+    .concat(remainingRight.map((right) => createRow(null, right)))
+  const sortedRows = sortRowsByLogicalName(rows, leftSort, rightSort, leftSorted, rightSorted)
+  return applyLpOrder(sortedRows, leftSorted, rightSorted, leftSource, rightSource, baselineSide)
 }
 
 const groupEntriesBySource = (entries = [], sortConfig = DEFAULT_SORT_CONFIG) => {
@@ -244,11 +295,15 @@ export const pairImageEntries = (
   leftEntries = [],
   rightEntries = [],
   leftSort = DEFAULT_SORT_CONFIG,
-  rightSort = DEFAULT_SORT_CONFIG
+  rightSort = DEFAULT_SORT_CONFIG,
+  leftSources = [],
+  rightSources = [],
+  baselineSide = 'left'
 ) => {
   const hasSourceOrder = leftEntries.concat(rightEntries).some((entry) => Number.isInteger(entry?.sourceIndex))
   if (!hasSourceOrder) {
-    return pairImageEntriesInScope(leftEntries, rightEntries, leftSort, rightSort)
+    return pairImageEntriesInScope(leftEntries, rightEntries, leftSort, rightSort,
+      leftSources[0], rightSources[0], baselineSide)
   }
   const leftGroups = groupEntriesBySource(leftEntries, leftSort)
   const rightGroups = groupEntriesBySource(rightEntries, rightSort)
@@ -258,7 +313,10 @@ export const pairImageEntries = (
     leftGroups[sourceIndex] || [],
     rightGroups[sourceIndex] || [],
     leftSort,
-    rightSort
+    rightSort,
+    leftSources[sourceIndex],
+    rightSources[sourceIndex],
+    baselineSide
   )).flat()
 }
 
@@ -293,7 +351,8 @@ export const rebuildCompareTask = (task = {}) => {
   const leftSources = task.sources && task.sources.left
   const rightSources = task.sources && task.sources.right
   const showFolderName = getSourceFolderCount(leftSources) > 1 || getSourceFolderCount(rightSources) > 1
-  const rows = pairImageEntries(leftItems, rightItems, leftSort, rightSort).map((row) => ({
+  const rows = pairImageEntries(leftItems, rightItems, leftSort, rightSort, leftSources, rightSources,
+    task.baselineSide).map((row) => ({
     ...row,
     left: withDisplayName(row.left, showFolderName),
     right: withDisplayName(row.right, showFolderName)

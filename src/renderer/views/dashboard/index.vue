@@ -140,15 +140,15 @@
           <el-table-column :label="$t('dashboard.compareTask.table.index')" prop="index" width="70" />
           <el-table-column :label="$t('dashboard.compareTask.table.baseline')" min-width="260">
             <template slot-scope="{ row }">
-              <span :class="{ missing: !row.left }">
-                {{ row.left ? (row.left.displayName || row.left.name) : $t('dashboard.compareTask.placeholders.missingBaseline') }}
+              <span :class="{ missing: !getRowImage(row, 'baseline') }">
+                {{ getRowImage(row, 'baseline') ? (getRowImage(row, 'baseline').displayName || getRowImage(row, 'baseline').name) : $t('dashboard.compareTask.placeholders.missingBaseline') }}
               </span>
             </template>
           </el-table-column>
           <el-table-column :label="$t('dashboard.compareTask.table.comparison')" min-width="260">
             <template slot-scope="{ row }">
-              <span :class="{ missing: !row.right }">
-                {{ row.right ? (row.right.displayName || row.right.name) : $t('dashboard.compareTask.placeholders.missingComparison') }}
+              <span :class="{ missing: !getRowImage(row, 'comparison') }">
+                {{ getRowImage(row, 'comparison') ? (getRowImage(row, 'comparison').displayName || getRowImage(row, 'comparison').name) : $t('dashboard.compareTask.placeholders.missingComparison') }}
               </span>
             </template>
           </el-table-column>
@@ -177,10 +177,7 @@ import {
 
 const { dialog } = require('@electron/remote')
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
-const SIDE_TO_STORE_KEY = {
-  baseline: 'left',
-  comparison: 'right'
-}
+const { mapGetters: preferenceMapGetters } = createNamespacedHelpers('preferenceStore')
 const SORT_FIELDS = ['name', 'lastModifyTime', 'size']
 const IGNORED_REASON_MESSAGE_KEYS = {
   duplicate: 'duplicates',
@@ -201,17 +198,18 @@ export default {
   components: { draggable },
   data() {
     return {
-      sides: Object.keys(SIDE_TO_STORE_KEY),
+      sides: ['left', 'right'],
       sortFields: SORT_FIELDS,
       freshnessCheckPromise: null
     }
   },
   computed: {
     ...mapGetters(['compareTask', 'compareRows', 'recentCompareFolders']),
+    ...preferenceMapGetters(['preference']),
     sourceCounts() {
       return {
-        left: (this.compareTask.sources.left || []).length,
-        right: (this.compareTask.sources.right || []).length
+        left: (this.compareTask.sources[this.getVisualSide('baseline')] || []).length,
+        right: (this.compareTask.sources[this.getVisualSide('comparison')] || []).length
       }
     },
     canStart() {
@@ -253,10 +251,17 @@ export default {
       'setRecentCompareFolder'
     ]),
     mapSide(side) {
-      return SIDE_TO_STORE_KEY[side]
+      return side
+    },
+    getVisualSide(side) {
+      if (side === 'baseline') return this.preference.baselineSide === 'right' ? 'right' : 'left'
+      return this.preference.baselineSide === 'right' ? 'left' : 'right'
     },
     getPanelLabel(side) {
-      return this.$t(`dashboard.compareTask.panels.${side}`)
+      return this.$t(`dashboard.compareTask.panels.${this.getSideRole(side)}`)
+    },
+    getSideRole(side) {
+      return side === this.getVisualSide('baseline') ? 'baseline' : 'comparison'
     },
     getSources(side) {
       return this.compareTask.sources[this.mapSide(side)] || []
@@ -280,9 +285,12 @@ export default {
       return this.$t(`dashboard.compareTask.sourceType.${type}`)
     },
     getRowStatus(row) {
-      if (!row.left) return 'missingBaseline'
-      if (!row.right) return 'missingComparison'
+      if (!this.getRowImage(row, 'baseline')) return 'missingBaseline'
+      if (!this.getRowImage(row, 'comparison')) return 'missingComparison'
       return 'ready'
+    },
+    getRowImage(row, side) {
+      return row && row[this.getVisualSide(side)]
     },
     getStatusLabel(row) {
       return this.$t(`dashboard.compareTask.status.${this.getRowStatus(row)}`)
@@ -353,7 +361,7 @@ export default {
       if (!change || !change.added) {
         return
       }
-      const otherSide = side === 'baseline' ? 'comparison' : 'baseline'
+      const otherSide = side === 'left' ? 'right' : 'left'
       const nextSources = this.getSources(side).slice()
       nextSources.splice(change.added.newIndex, 0, change.added.element)
       const otherSources = this.getSources(otherSide)

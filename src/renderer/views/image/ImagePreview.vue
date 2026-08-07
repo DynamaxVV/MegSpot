@@ -115,6 +115,7 @@ export default {
   },
   mounted() {
     this.showType = this.defaultFileListShowType
+    this.refreshThumbnailList()
   },
   deactivated() {
     this.cleanup()
@@ -178,7 +179,7 @@ export default {
       const { order, property: field } = sortChange
       this.setImageConfig({ defaultSort: { order, field } })
       // 获取新排序下的thunbnail顺序
-      this.thumbnailList = this.$refs.fileTable.getSortData()
+      this.refreshThumbnailList()
     },
     handleCanApplyChange(canApply) {
       this.btnDisabled = !canApply
@@ -204,17 +205,31 @@ export default {
     },
     openFolder() {
       shell.openPath(this.currentPath)
+    },
+    refreshThumbnailList() {
+      this.$nextTick(() => {
+        if (this.$refs.fileTable) {
+          this.thumbnailList = this.$refs.fileTable.getSortData()
+          this.thumbnailKey++
+        }
+      })
     }
   },
   watch: {
     defaultFileListShowType(newVal) {
       this.showType = newVal
+      if (newVal === 'thumbnail') {
+        this.refreshThumbnailList()
+      }
     },
     imageList: {
       handler(newVal, oldVal) {
         if (oldVal && oldVal.length > 0 && newVal.length === 0) {
           imageCache.clear()
           this.thumbnailKey++
+        }
+        if (this.showType === 'thumbnail') {
+          this.refreshThumbnailList()
         }
       },
       immediate: false

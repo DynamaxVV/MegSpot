@@ -57,17 +57,25 @@ export const parseTranslationText = (content = '') => {
     match = SECTION_RE.exec(source)
   }
   const images = {}
+  const imageOrder = []
+  const seenImages = new Set()
   sections.forEach((section, index) => {
+    const imageKey = normalizeTranslationImageName(section.imageName)
+    if (imageKey && !seenImages.has(imageKey)) {
+      seenImages.add(imageKey)
+      imageOrder.push(section.imageName)
+    }
     const end = sections[index + 1] ? sections[index + 1].start : source.length
     const entries = parseSection(section.imageName, source.slice(section.end, end))
-    if (entries.length) images[normalizeTranslationImageName(section.imageName)] = entries
+    if (entries.length) images[imageKey] = entries
   })
-  return images
+  return { annotations: images, imageOrder }
 }
 
 export const getTranslationForImage = (source, imagePath) => {
   if (!source || source.type !== 'folder' || !source.translation || !imagePath) return []
   const expectedFolder = path.resolve(String(source.path))
   if (path.dirname(path.resolve(String(imagePath))) !== expectedFolder) return []
-  return (source.translation.annotations || {})[normalizeTranslationImageName(imagePath)] || []
+  const annotations = source.translation.annotations || source.translation
+  return annotations[normalizeTranslationImageName(imagePath)] || []
 }

@@ -13,6 +13,7 @@ import {
 } from './imagePairing.js'
 import {
   hasItemPathSetChanged,
+  hasTranslationSetChanged,
   ingestImageSources,
   inspectImageSourceFreshness,
   rebuildItemsFromSources,
@@ -109,7 +110,8 @@ assert.deepStrictEqual(reversedCompositeRows.map((row) => [row.left && row.left.
 assert.deepStrictEqual(rows.map((row) => [row.left && row.left.path, row.right && row.right.path]), [
   ['/left/a-1.JPG', '/right/A-1.webp'],
   ['/left/B-02.png', '/right/b-02.jpeg'],
-  ['/left/extra.png', '/right/extra-2.png'],
+  ['/left/extra.png', null],
+  [null, '/right/extra-2.png'],
   [null, '/right/right-only.png']
 ])
 
@@ -132,6 +134,53 @@ assert.deepStrictEqual(sourceScopedRows.map((row) => [row.left && row.left.path,
 
 assert.strictEqual(findPreviousRowImage(sourceScopedRows, 2, 'left').path, '/left/folder-2/b.png')
 assert.strictEqual(findPreviousRowImage(sourceScopedRows, 0, 'right'), null)
+
+const lpRows = pairImageEntries(
+  [
+    { path: '/left/group-1/002.jpg', name: '002.jpg', sourceIndex: 0 },
+    { path: '/left/group-1/999.jpg', name: '999.jpg', sourceIndex: 0 },
+    { path: '/left/group-1/extra.png', name: 'extra.png', sourceIndex: 0 },
+    { path: '/left/group-2/001.jpg', name: '001.jpg', sourceIndex: 1 }
+  ],
+  [
+    { path: '/right/group-1/001 拷贝.png', name: '001 拷贝.png', sourceIndex: 0 },
+    { path: '/right/group-2/001.jpg', name: '001.jpg', sourceIndex: 1 }
+  ],
+  { field: 'name', order: 'asc' },
+  { field: 'name', order: 'asc' },
+  [
+    { path: '/left/group-1', type: 'folder', translation: { imageOrder: ['001.jpg', '002.jpg'] } },
+    { path: '/left/group-2', type: 'folder' }
+  ],
+  [
+    { path: '/right/group-1', type: 'folder' },
+    { path: '/right/group-2', type: 'folder' }
+  ]
+)
+assert.deepStrictEqual(lpRows.map((row) => [row.left && row.left.path, row.right && row.right.path]), [
+  [null, '/right/group-1/001 拷贝.png'],
+  ['/left/group-1/002.jpg', null],
+  ['/left/group-1/999.jpg', null],
+  ['/left/group-1/extra.png', null],
+  ['/left/group-2/001.jpg', '/right/group-2/001.jpg']
+])
+
+const rightBaselineLpRows = pairImageEntries(
+  [
+    { path: '/left/001.jpg', name: '001.jpg', sourceIndex: 0 },
+    { path: '/left/002.jpg', name: '002.jpg', sourceIndex: 0 }
+  ],
+  [
+    { path: '/right/002.jpg', name: '002.jpg', sourceIndex: 0 },
+    { path: '/right/001.jpg', name: '001.jpg', sourceIndex: 0 }
+  ],
+  { field: 'name', order: 'asc' },
+  { field: 'name', order: 'asc' },
+  [{ path: '/left', type: 'folder' }],
+  [{ path: '/right', type: 'folder', translation: { imageOrder: ['002.jpg', '001.jpg'] } }],
+  'right'
+)
+assert.deepStrictEqual(rightBaselineLpRows.map((row) => row.right && row.right.name), ['002.jpg', '001.jpg'])
 
 const rebuilt = rebuildCompareTask({
   leftItems,
@@ -237,9 +286,21 @@ const runSourceChecks = async () => {
     ])
 
     await fs.remove(singleImagePath)
+    await fs.writeFile(txtPath,
+      '>>>>>>>>[direct.png]<<<<<<<<\n\n>>>>>>>>[missing.png]<<<<<<<<\n')
     const rebuiltSources = await rebuildItemsFromSources(ingestedSources.sources)
     assert.deepStrictEqual(rebuiltSources.sources, [
-      { path: folderPath, type: 'folder' }
+      {
+        path: folderPath,
+        type: 'folder',
+        translation: {
+          path: txtPath,
+          lastModifyTime: rebuiltSources.sources[0].translation.lastModifyTime,
+          contentHash: rebuiltSources.sources[0].translation.contentHash,
+          annotations: {},
+          imageOrder: ['direct.png', 'missing.png']
+        }
+      }
     ])
     assert.deepStrictEqual(rebuiltSources.items.map((item) => item.path), [imagePath])
     assert.deepStrictEqual(rebuiltSources.ignored, [
@@ -251,14 +312,22 @@ const runSourceChecks = async () => {
       { path: path.join(folderPath, '.', 'direct.png') },
       null
     ]), [imagePath])
-    assert.strictEqual(hasItemPathSetChanged(
+assert.strictEqual(hasItemPathSetChanged(
       [{ path: imagePath, lastModifyTime: 1 }],
       [{ path: path.join(folderPath, 'direct.png'), lastModifyTime: 999 }]
     ), false)
     assert.strictEqual(hasItemPathSetChanged(
       [{ path: imagePath }],
       [{ path: singleImagePath }]
-    ), true)
+), true)
+assert.strictEqual(hasTranslationSetChanged(
+  [{ translation: { path: txtPath, lastModifyTime: 2, contentHash: 'same' } }],
+  [{ translation: { path: txtPath, lastModifyTime: 1, contentHash: 'same' } }]
+), false)
+assert.strictEqual(hasTranslationSetChanged(
+  [{ translation: { path: txtPath, contentHash: 'new' } }],
+  [{ translation: { path: txtPath, contentHash: 'old' } }]
+), true)
     const freshScan = await inspectImageSourceFreshness(
       ingestedSources.sources,
       [{ path: imagePath, lastModifyTime: 999 }]
