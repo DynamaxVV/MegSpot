@@ -240,6 +240,10 @@ export default {
           action: 'adjustGamma'
         },
         {
+          event: 'resetFilters',
+          action: 'resetFilters'
+        },
+        {
           event: 'changeHistTypes',
           action: 'handleChangeHistTypes'
         },
@@ -674,6 +678,9 @@ export default {
       const settingRef = this.$refs['effect-settings']
       settingRef.generateFilterParams({ gamma })
       this.applyFilters('gamma', params)
+    },
+    async resetFilters() {
+      await this.initImage(false)
     },
     async adjustLevels({ parentId, ...params }) {
       if (!this.image) {

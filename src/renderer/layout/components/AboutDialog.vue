@@ -116,36 +116,35 @@
             </vxe-column> -->
             <vxe-column type="expand" width="80">
               <template #content="{ row, rowIndex }">
-                <el-card
-                  v-for="(_, index) in temporaryKeysArrProxy"
-                  :key="index"
-                  flex="cross:center"
-                  style="width: 100%"
-                >
-                  <div flex="cross:center">
-                    <el-input
-                      :id="generateRowId(rowIndex, index)"
-                      :disabled="activeRowId !== generateRowId(rowIndex)"
-                      v-model="temporaryKeysArrProxy[index]"
-                    ></el-input>
-                    <el-tooltip :content="$t('gallery.clear')" placement="top">
-                      <el-button
-                        icon="el-icon-close"
-                        circle
-                        @click="clearKeys(index, generateRowId(rowIndex, index))"
-                        style="margin-left: 10px"
-                      ></el-button>
-                      <!-- TODO:检测重复；支持单独重置 -->
-                      <!-- <span v-if="
-                        [...temporaryKeysArr[index]].sort().toString() !==
-                        getOriginStr(row, index) &&
-                        hotkeyStrArr.includes(
-                          [...temporaryKeysArr[index]].sort().toString()
-                        )
-                      ">已存在相同快捷键</span> -->
-                    </el-tooltip>
-                  </div>
-                </el-card>
+                <div class="hotkey-edit-list">
+                  <template v-for="(_, index) in temporaryKeysArrProxy">
+                    <span v-if="index > 0" :key="`separator-${index}`" class="hotkey-or">{{ $t('hotkey.or') }}</span>
+                    <el-card :key="index" class="hotkey-edit-card" flex="cross:center">
+                      <div flex="cross:center">
+                        <el-input
+                          :id="generateRowId(rowIndex, index)"
+                          :disabled="activeRowId !== generateRowId(rowIndex)"
+                          v-model="temporaryKeysArrProxy[index]"
+                        ></el-input>
+                        <el-tooltip :content="$t('gallery.clear')" placement="top">
+                          <el-button
+                            icon="el-icon-close"
+                            circle
+                            @click="clearKeys(index, generateRowId(rowIndex, index))"
+                            style="margin-left: 10px"
+                          ></el-button>
+                        </el-tooltip>
+                      </div>
+                    </el-card>
+                  </template>
+                  <vxe-button
+                    v-if="temporaryKeysArr.length < MAX_HOTKEYS_PER_FUNCTION"
+                    icon="el-icon-plus"
+                    @click="addHotkey(rowIndex)"
+                  >
+                    {{ $t('hotkey.add') }}
+                  </vxe-button>
+                </div>
               </template>
             </vxe-column>
             <vxe-column :title="$t('hotkey.desc')" field="desc" align="left">
@@ -155,11 +154,18 @@
             </vxe-column>
             <vxe-column :title="$t('hotkey.key')" field="keysArr" width="250">
               <template #default="{ row }">
-                <div v-for="(keys, index) in row.keysArr" :key="index" flex="cross:center" style="width: 100%">
-                  <span v-for="(key, _index) in keys" :key="_index">
-                    <kbd class="hotkey">{{ getLabel(key) }}</kbd>
-                    <span v-if="_index < keys.length - 1">&nbsp;+&nbsp;</span>
-                  </span>
+                <div class="hotkey-display-list">
+                  <template v-for="(keys, index) in row.keysArr">
+                    <span v-if="index > 0" :key="`display-separator-${index}`" class="hotkey-or">
+                      &nbsp;{{ $t('hotkey.or') }}&nbsp;
+                    </span>
+                    <span :key="`display-hotkey-${index}`" class="hotkey-display-item">
+                      <span v-for="(key, _index) in keys" :key="_index">
+                        <kbd class="hotkey">{{ getLabel(key) }}</kbd>
+                        <span v-if="_index < keys.length - 1">&nbsp;+&nbsp;</span>
+                      </span>
+                    </span>
+                  </template>
                 </div>
               </template>
             </vxe-column>
@@ -238,7 +244,13 @@ const { releaseNotes, releaseDate } = require('@/../../package.json').build.rele
 import { createNamespacedHelpers } from 'vuex'
 const { mapGetters, mapActions } = createNamespacedHelpers('preferenceStore')
 import { i18nRender } from '@/lang'
-import { ATTRS_KEYS, SPECIAL_KEYS, PRESET_KEYS_MAP, DEFAULT_HOTKEYS } from '@/tools/hotkey'
+import {
+  ATTRS_KEYS,
+  SPECIAL_KEYS,
+  PRESET_KEYS_MAP,
+  DEFAULT_HOTKEYS,
+  MAX_HOTKEYS_PER_FUNCTION
+} from '@/tools/hotkey'
 
 export default {
   name: 'AboutDialog',
@@ -256,6 +268,7 @@ export default {
       appVersion,
       releaseNotes,
       releaseDate,
+      MAX_HOTKEYS_PER_FUNCTION,
       maxHeight: '0',
       logTxt: '',
       langOptions: [
@@ -544,6 +557,19 @@ export default {
       this.temporaryKeysArr[index] = []
       this.temporaryKeysEleMap.get(id).value = ''
     },
+    addHotkey(rowIndex) {
+      if (this.temporaryKeysArr.length >= MAX_HOTKEYS_PER_FUNCTION) {
+        return
+      }
+      this.temporaryKeysArr.push([])
+      this.$nextTick(() => {
+        const index = this.temporaryKeysArr.length - 1
+        const id = this.generateRowId(rowIndex, index)
+        const ele = document.getElementById(id)
+        this.temporaryKeysEleMap.set(id, ele)
+        ele && ele.addEventListener('keydown', this.handleKeydown, true)
+      })
+    },
     handleKeydown(event) {
       if (event.defaultPrevented) {
         return // Do nothing if the event was already processed
@@ -617,12 +643,24 @@ export default {
       if (JSON.parse(JSON.stringify(keysArr)).sort().toString() === temporaryKeysStr) {
         this.$message.info('无更改')
       } else {
-        if (temporaryKeysArr.some((keys) => this.hotkeyStrArr.includes([...keys].sort().toString()))) {
-          this.$message.info('已存在相同快捷键')
-          return
-        }
         if (temporaryKeysArr.some((keys) => keys.length === 0)) {
           this.$message.info('快捷键不可为空')
+          return
+        }
+        if (temporaryKeysArr.length > MAX_HOTKEYS_PER_FUNCTION) {
+          this.$message.info(`同一功能最多设置${MAX_HOTKEYS_PER_FUNCTION}个快捷键`)
+          return
+        }
+        const otherHotkeyStrArr = this.preference.hotkeys
+          .filter((keyConf) => keyConf.name !== name)
+          .map((keyConf) => keyConf.keysArr.map((keys) => [...keys].sort().toString()))
+          .flat(2)
+        const temporaryHotkeyStrArr = temporaryKeysArr.map((keys) => [...keys].sort().toString())
+        if (
+          new Set(temporaryHotkeyStrArr).size !== temporaryHotkeyStrArr.length ||
+          temporaryHotkeyStrArr.some((key) => otherHotkeyStrArr.includes(key))
+        ) {
+          this.$message.info('已存在相同快捷键')
           return
         }
         this.hotkeys = JSON.parse(
@@ -885,6 +923,33 @@ export default {
   border-radius: 4px;
   padding: 4px;
   box-shadow: inset 0 0 0 1px #b9b9b9;
+}
+
+.hotkey-edit-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hotkey-display-list {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.hotkey-display-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.hotkey-edit-card {
+  flex: 0 1 360px;
+}
+
+.hotkey-or {
+  color: #606266;
+  font-weight: 600;
 }
 
 /*滚动条整体部分*/

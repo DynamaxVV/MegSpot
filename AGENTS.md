@@ -127,7 +127,7 @@ src/renderer/
 
 ### 状态持久化
 
-使用 `vuex-electron-store` 将 Vuex 状态（imageStore, videoStore, preferenceStore）自动持久化到磁盘。应用启动时会固定进入 `/dashboard` 并清空 `imageStore.compareTask`，因此不会恢复上一次配对任务；`recentCompareFolders` 和常规偏好仍会保留。
+使用 `vuex-electron-store` 将 Vuex 状态（imageStore, videoStore, preferenceStore）自动持久化到磁盘。应用启动时会固定进入 `/dashboard` 并清空 `imageStore.compareTask`，因此不会恢复上一次配对任务；`recentCompareFolders`、常规偏好和 `preferenceStore.imageFilter` 中的色彩/滤镜参数仍会保留。切换 `PairCompareWorkspace` 的对比组或返回首页不会重置这些参数，只有滤镜面板的“重置所有”会恢复默认值。
 
 ## 关键依赖
 
@@ -155,7 +155,7 @@ src/renderer/
    - 选中文件加入"已选列表"，通过"文件长廊"管理
 3. **图片对比**：支持叠加对比、分割对比、拖拽对比、多种布局（1x1 到 2x3）
 4. **视频对比**：视频播放、帧同步、截屏对比
-5. **图像调节**：亮度、对比度、饱和度、灰度、Gamma、色阶
+5. **图像调节**：亮度、对比度、饱和度、灰度、反色、透明度、模糊、Gamma、色阶；色彩与滤镜参数通过 `preferenceStore` 持久化
 6. **辅助工具**：RGB 取色器、直方图、缩放、镜像/翻转、GIF 导出、快照 (.mgt)
 
 ## 路由

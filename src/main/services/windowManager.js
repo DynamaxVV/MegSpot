@@ -11,6 +11,21 @@ import { cmdArg } from './cmdParse'
 export var loadWindow = null
 export var mainWindow = null
 
+function loadPage(window, url) {
+  const loadPromise = process.env.NODE_ENV === 'development' ? window.loadURL(url) : window.loadFile(url)
+  loadPromise.catch((error) => {
+    console.error('Failed to load window page', { url, error: error?.message || error })
+  })
+}
+
+export function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return false
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  if (!mainWindow.isVisible()) mainWindow.show()
+  mainWindow.focus()
+  return true
+}
+
 const appIconName = 'logo_icon.png'
 const iconPath = path.join(__dirname, '../../renderer/assets/images/' + appIconName)
 export function createMainWindow() {
@@ -58,7 +73,15 @@ export function createMainWindow() {
   }
   const menu = Menu.buildFromTemplate(menuconfig)
   Menu.setApplicationMenu(menu)
-  mainWindow.loadURL(winURL)
+  loadPage(mainWindow, winURL)
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('Main window failed to load', {
+      errorCode,
+      errorDescription,
+      validatedURL
+    })
+  })
 
   require('@electron/remote/main').enable(mainWindow.webContents)
 
@@ -100,7 +123,7 @@ function loadingWindow() {
     }
   })
 
-  loadWindow.loadURL(loadingURL)
+  loadPage(loadWindow, loadingURL)
 
   loadWindow.show()
   console.log('=== show loadWindow   ===')

@@ -78,6 +78,8 @@ export default {
   hotkey: {
     desc: '描述',
     key: '快捷键',
+    add: '添加快捷键',
+    or: '或',
     back: '返回文件选择页面',
     moveUp: '向上移动',
     moveLeft: '向左移动',

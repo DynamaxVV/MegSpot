@@ -47,7 +47,7 @@ The dashboard shows a pairing preview before entering the workspace. Basenames a
 
 ### 3. Compare images
 
-Use side-by-side, single, or split mode. Up and Down move between pairs; holding Left or Right temporarily shows the opposite side. Brightness, contrast, saturation, grayscale, Gamma, levels, RGB sampling, histograms, zoom, and rotation apply to the current image.
+Use side-by-side, single, or split mode. Up and Down move between pairs; holding Left or Right temporarily shows the opposite side. Color and filter settings persist when switching pairs or returning to the dashboard; use “Reset all” in the filter panel to restore defaults.
 
 ### 4. Review and refresh
 

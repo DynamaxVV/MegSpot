@@ -8,8 +8,8 @@
 
 当前版本：
 
-- package 版本：<code>2.2.12-vv1.0.6</code>
-- 建议 Git tag：<code>v2.2.12-vv1.0.6</code>
+- package 版本：<code>2.2.12-vv1.0.8</code>
+- 建议 Git tag：<code>v2.2.12-vv1.0.8</code>
 - Release 类型：GitHub Pre-release
 - 首次发布平台：Windows x64 Portable、Linux x64 AppImage、macOS arm64 DMG
 - 签名状态：Windows 与 macOS 预发布产物未签名；macOS 首次打开可能触发 Gatekeeper 提示
@@ -100,9 +100,9 @@ npm run build:linux -- --x64
 
 产物输出到 <code>build/</code>。当前配置计划生成：
 
-- <code>MegSpot-2.2.12-vv1.0.6-win-x64-portable.exe</code>
-- <code>MegSpot-2.2.12-vv1.0.6-linux-x86_64.AppImage</code>
-- <code>MegSpot-2.2.12-vv1.0.6-mac-arm64.dmg</code>
+- <code>MegSpot-2.2.12-vv1.0.8-win-x64-portable.exe</code>
+- <code>MegSpot-2.2.12-vv1.0.8-linux-x86_64.AppImage</code>
+- <code>MegSpot-2.2.12-vv1.0.8-mac-arm64.dmg</code>
 
 实际文件名以 electron-builder 输出为准。不要把旧版本残留文件、调试目录或临时压缩包一并上传。
 
@@ -112,9 +112,9 @@ npm run build:linux -- --x64
 find build -maxdepth 1 -type f -print
 file build/*.exe build/*.AppImage build/*.dmg
 sha256sum \
-  build/MegSpot-2.2.12-vv1.0.6-win-x64-portable.exe \
-  build/MegSpot-2.2.12-vv1.0.6-linux-x86_64.AppImage \
-  build/MegSpot-2.2.12-vv1.0.6-mac-arm64.dmg > SHA256SUMS
+  build/MegSpot-2.2.12-vv1.0.8-win-x64-portable.exe \
+  build/MegSpot-2.2.12-vv1.0.8-linux-x86_64.AppImage \
+  build/MegSpot-2.2.12-vv1.0.8-mac-arm64.dmg > SHA256SUMS
 ~~~
 
 上面的 <code>sha256sum</code> 适用于 Linux/CI；在 macOS 本地可将命令替换为 <code>shasum -a 256</code>。
@@ -135,8 +135,8 @@ macOS DMG 可以作为明确标注的公开预发布资产，但在完成 Apple 
 
 ~~~bash
 git status --short
-git tag -a v2.2.12-vv1.0.6 -m "release: v2.2.12-vv1.0.6"
-git push fork v2.2.12-vv1.0.6
+git tag -a v2.2.12-vv1.0.8 -m "release: v2.2.12-vv1.0.8"
+git push fork v2.2.12-vv1.0.8
 ~~~
 
 其中 <code>fork</code> 是本仓库远程名时才使用；如果远程名不同，请替换为实际指向 <code>DynamaxVV/MegSpot</code> 的 remote。推送后在 GitHub Actions 页面确认 quality、build 和 release 三个 job 均成功。
@@ -147,7 +147,7 @@ git push fork v2.2.12-vv1.0.6
 
 工作流创建 Draft 后，发布者必须逐项检查：
 
-- tag 为 <code>v2.2.12-vv1.0.6</code>，package 版本为 <code>2.2.12-vv1.0.6</code>，Release 标题应为 <code>MegSpot v2.2.12-vv1.0.6</code>。
+- tag 为 <code>v2.2.12-vv1.0.8</code>，package 版本为 <code>2.2.12-vv1.0.8</code>，Release 标题应为 <code>MegSpot v2.2.12-vv1.0.8</code>。
 - 只有 Windows x64 Portable、Linux x64 AppImage、macOS arm64 DMG 和 <code>SHA256SUMS</code> 等预期资产。
 - 下载资产的 SHA-256 与 <code>SHA256SUMS</code> 一致。
 - Windows 产物明确标注“未签名”；Linux AppImage 可执行。
@@ -161,16 +161,17 @@ git push fork v2.2.12-vv1.0.6
 ## 7. 建议的 Release Notes 模板
 
 ~~~markdown
-## MegSpot 2.2.12-vv1.0.6
+## MegSpot 2.2.12-vv1.0.8
 
 这是基于 MegEngine/MegSpot 2.2.12 的非官方二次开发预发布版本，由 DynamaxVV 维护。
 
 ### 主要变化
 
-- 新增审校模式，读取图源文件夹中的 TXT 标注并渲染。
-- 移除运行时自动更新、在线埋点和外部网络访问入口。
-- 增强本地诊断日志，支持在偏好设置中查看最近记录。
-- 保留并完善成对图片配对、三种对比布局、资源回收和快捷键配置。
+- 完善 LP 标注文档排序、跨侧匹配、空页保留、“拷贝”后缀和 `999` 发布页处理。
+- 支持选择左侧或右侧基准图，优化审校模式状态、抽屉布局和单页缺图显示。
+- 图片内容变化自动刷新，LP 文档改用内容 MD5 判断变化，并修复错误配对、同组混排和文件列表显示类型问题。
+- 发布流程支持 macOS runner 交叉构建 Windows，并检查是否打包了嵌套 Electron 运行时。
+- 应用采用单实例模式；生产环境使用明确的本地 HTML 文件加载和失败诊断。
 
 ### 下载
 

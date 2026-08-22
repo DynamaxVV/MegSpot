@@ -334,7 +334,8 @@ export default {
       const storeSide = this.mapSide(side)
       return {
         sources: { [storeSide]: result.sources },
-        [`${storeSide}Items`]: result.items
+        [`${storeSide}Items`]: result.items,
+        dirty: false
       }
     },
     async applySideResult(side, action, result) {
@@ -383,7 +384,8 @@ export default {
       await this.refreshCompareTask({
         sources: { left: left.sources, right: right.sources },
         leftItems: left.items,
-        rightItems: right.items
+        rightItems: right.items,
+        dirty: false
       })
     },
     async refreshPairs() {

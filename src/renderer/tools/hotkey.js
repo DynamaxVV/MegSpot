@@ -63,6 +63,8 @@ export const PRESET_KEYS = [...SPECIAL_KEYS]
 
 export const PRESET_KEYS_MAP = new Map(PRESET_KEYS.map((item) => [item.key, item]))
 
+export const MAX_HOTKEYS_PER_FUNCTION = 2
+
 const ctrlOrCommand = isDrawn ? 'Meta' : 'Control'
 
 export const DEFAULT_HOTKEYS = [

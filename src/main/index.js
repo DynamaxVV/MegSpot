@@ -3,9 +3,19 @@ import path from 'path'
 import { cmdArg } from './services/cmdParse'
 const { app, protocol } = require('electron')
 import PersistedState from 'vuex-electron-store'
-import initWindow from './services/windowManager'
+import initWindow, { focusMainWindow } from './services/windowManager'
 import DisableButton from './config/DisableButton'
 const { session } = require('electron')
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, commandLine) => {
+    console.log('Second instance requested; focusing existing window', { commandLine })
+    if (!focusMainWindow()) app.whenReady().then(focusMainWindow)
+  })
+}
 // import electronDevtoolsInstaller, {
 //   VUEJS_DEVTOOLS
 // } from 'electron-devtools-installer';
@@ -41,7 +51,7 @@ advise:
 }
 app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport') // 启用H.265解码
 require('@electron/remote/main').initialize() // init @electron/remote
-PersistedState.initRenderer() // init vuex-electron-store
+if (gotSingleInstanceLock) PersistedState.initRenderer() // init vuex-electron-store
 console.log('cmdArg', cmdArg)
 function onAppReady() {
   initWindow()
@@ -77,21 +87,29 @@ function onAppReady() {
   })
 }
 // 禁止缓存
-app.isReady() ? onAppReady() : app.on('ready', onAppReady)
+if (gotSingleInstanceLock) {
+  app.isReady() ? onAppReady() : app.on('ready', onAppReady)
+}
 // 解决9.x跨域异常问题
 app.commandLine.appendArgument('no-sandbox')
 
-app.on('window-all-closed', () => {
-  // 所有平台均为所有窗口关闭就退出软件
-  app.quit()
-})
-app.on('browser-window-created', () => {
-  // console.log('window-created');
-})
+if (gotSingleInstanceLock) {
+  app.on('window-all-closed', () => {
+    // 所有平台均为所有窗口关闭就退出软件
+    app.quit()
+  })
+}
+if (gotSingleInstanceLock) {
+  app.on('browser-window-created', () => {
+    // console.log('window-created');
+  })
+}
 const MEGSPOT = 'megspot'
-if (process.env.NODE_ENV === 'development' && process.platform === 'win32') {
-  // 设置electron.exe 和 app的路径
-  app.setAsDefaultProtocolClient(MEGSPOT, process.execPath, [path.resolve(process.argv[1])])
-} else {
-  app.setAsDefaultProtocolClient(MEGSPOT)
+if (gotSingleInstanceLock) {
+  if (process.env.NODE_ENV === 'development' && process.platform === 'win32') {
+    // 设置electron.exe 和 app的路径
+    app.setAsDefaultProtocolClient(MEGSPOT, process.execPath, [path.resolve(process.argv[1])])
+  } else {
+    app.setAsDefaultProtocolClient(MEGSPOT)
+  }
 }

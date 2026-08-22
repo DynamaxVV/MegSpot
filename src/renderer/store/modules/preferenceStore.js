@@ -49,6 +49,16 @@ const preferenceStore = {
       // outputShadow: 0,
       // outputHighlight: 255
     },
+    imageFilter: {
+      brightness: 100,
+      contrast: 100,
+      saturate: 100,
+      grayscale: 0,
+      invert: 0,
+      opacity: 100,
+      blur: 0,
+      singleHistType: 'rgb'
+    },
     histConfig: {
       histTypes: ['rgb'], // 'gray', 'rgb', 'red', 'green', 'blue'
       scale: 1.0,
@@ -78,7 +88,8 @@ const preferenceStore = {
     compareBgColor: (state) => state.preference.compareBgColor || '',
     histConfig: (state) => state.histConfig,
     hotkeysMap: (state) => state.hotkeysMap,
-    colorLevelSetting: (state) => state.colorLevelSetting
+    colorLevelSetting: (state) => state.colorLevelSetting,
+    imageFilter: (state) => state.imageFilter
   },
   mutations: {
     SET_PREFERENCE: (state, newPreOb) => {
@@ -105,6 +116,9 @@ const preferenceStore = {
       const newPreference = Object.assign({}, state.colorLevelSetting, newPreOb)
       state.colorLevelSetting = newPreference
     },
+    SET_IMAGE_FILTER: (state, newFilter) => {
+      state.imageFilter = Object.assign({}, state.imageFilter, newFilter)
+    },
     ENSURE_HOTKEYS_MAP: (state) => {
       if (getType(state.hotkeysMap) !== 'Map' || state.hotkeysMap.size === 0) {
         console.log('(ensure)generate keysMap')
@@ -127,6 +141,9 @@ const preferenceStore = {
     },
     setColorLevel({ commit }, newPreOb) {
       commit('SET_COLOR_LEVEL', newPreOb)
+    },
+    setImageFilter({ commit }, newFilter) {
+      commit('SET_IMAGE_FILTER', newFilter)
     },
     setUuid({ commit }, newUuid) {
       commit('SET_UUID', newUuid)

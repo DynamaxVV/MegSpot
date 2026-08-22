@@ -242,21 +242,9 @@ export default {
   data() {
     return {
       // 预览处理效果
-      brightness: 100,
-      contrast: 100,
-      saturate: 100,
-      grayscale: 0,
-      invert: 0,
-      opacity: 100,
-      blur: 0,
       enableXray: false,
       preGammaData: 1,
-      gammaData: 1,
       preLevels: '025510255rgb',
-      inputLevels: [0, 255],
-      inputMidtonesData: 1,
-      outputLevels: [0, 255],
-      singleHistType: 'rgb',
       histTypeOptions: histTypeOptions
         .filter((type) => type !== 'gray')
         .map((type) => ({
@@ -266,7 +254,55 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['preference', 'histConfig']),
+    ...mapGetters(['preference', 'gamma', 'histConfig', 'imageFilter', 'colorLevelSetting']),
+    brightness: {
+      get() { return this.imageFilter?.brightness ?? 100 },
+      set(value) { this.setImageFilter({ brightness: value }) }
+    },
+    contrast: {
+      get() { return this.imageFilter?.contrast ?? 100 },
+      set(value) { this.setImageFilter({ contrast: value }) }
+    },
+    saturate: {
+      get() { return this.imageFilter?.saturate ?? 100 },
+      set(value) { this.setImageFilter({ saturate: value }) }
+    },
+    grayscale: {
+      get() { return this.imageFilter?.grayscale ?? 0 },
+      set(value) { this.setImageFilter({ grayscale: value }) }
+    },
+    invert: {
+      get() { return this.imageFilter?.invert ?? 0 },
+      set(value) { this.setImageFilter({ invert: value }) }
+    },
+    opacity: {
+      get() { return this.imageFilter?.opacity ?? 100 },
+      set(value) { this.setImageFilter({ opacity: value }) }
+    },
+    blur: {
+      get() { return this.imageFilter?.blur ?? 0 },
+      set(value) { this.setImageFilter({ blur: value }) }
+    },
+    gammaData: {
+      get() { return this.gamma },
+      set(value) { this.setGamma(value) }
+    },
+    inputLevels: {
+      get() { return this.colorLevelSetting.inputs },
+      set(value) { this.setColorLevel({ inputs: value }) }
+    },
+    inputMidtonesData: {
+      get() { return this.colorLevelSetting.inputMidtones },
+      set(value) { this.setColorLevel({ inputMidtones: value }) }
+    },
+    outputLevels: {
+      get() { return this.colorLevelSetting.outputs },
+      set(value) { this.setColorLevel({ outputs: value }) }
+    },
+    singleHistType: {
+      get() { return this.imageFilter?.singleHistType ?? 'rgb' },
+      set(value) { this.setImageFilter({ singleHistType: value }) }
+    },
     canvasStyle() {
       let filter = ''
       ;['brightness', 'contrast', 'saturate', 'grayscale', 'opacity', 'invert'].forEach((item) => {
@@ -359,24 +395,40 @@ export default {
     }
   },
   methods: {
-    ...mapActions(['setPreference']),
+    ...mapActions(['setPreference', 'setGamma', 'setColorLevel', 'setImageFilter']),
     resetImageStyle() {
       // 预览处理效果
-      this.brightness = 100
-      this.contrast = 100
-      this.saturate = 100
-      this.grayscale = 0
-      this.invert = 0
-      this.opacity = 100
-      this.blur = 0
+      this.setImageFilter({
+        brightness: 100,
+        contrast: 100,
+        saturate: 100,
+        grayscale: 0,
+        invert: 0,
+        opacity: 100,
+        blur: 0,
+        singleHistType: 'rgb'
+      })
 
       // gamma
-      this.gammaData = 1
+      this.setGamma(1)
 
       // color level
-      this.inputLevels = [0, 255]
-      this.inputMidtonesData = 1
-      this.outputLevels = [0, 255]
+      this.setColorLevel({
+        inputs: [0, 255],
+        inputMidtones: 1,
+        outputs: [0, 255]
+      })
+      this.preGammaData = 1
+      this.preLevels = '025510255rgb'
+
+      // 防抖方法经过 Vue 绑定后不再暴露 cancel；重新提交默认值可覆盖旧的待执行更新。
+      this.updateGama(1)
+      this.updateInputLevels([0, 255])
+      this.updateInputMidtones(1)
+      this.updateOutputLevels([0, 255])
+
+      // 从原始图片重建 bitmap，避免在已经被旧滤镜处理过的 bitmap 上继续叠加。
+      bus.$emit('image_broadcast', { name: 'resetFilters' })
     },
     updateGama: debounce(200, function (newGama) {
       if (newGama) {

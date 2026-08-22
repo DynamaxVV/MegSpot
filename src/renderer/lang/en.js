@@ -79,6 +79,8 @@ export default {
   hotkey: {
     desc: 'description',
     key: 'shortcut keys',
+    add: 'Add shortcut',
+    or: 'or',
     back: 'Go back to the file selection page',
     moveUp: 'move up',
     moveLeft: 'move left',

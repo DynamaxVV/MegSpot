@@ -135,6 +135,31 @@ assert.deepStrictEqual(sourceScopedRows.map((row) => [row.left && row.left.path,
 assert.strictEqual(findPreviousRowImage(sourceScopedRows, 2, 'left').path, '/left/folder-2/b.png')
 assert.strictEqual(findPreviousRowImage(sourceScopedRows, 0, 'right'), null)
 
+const positionalImageRows = pairImageEntries(
+  [
+    { path: '/left/cover-a.png', name: 'cover-a.png', sourceIndex: 0 },
+    { path: '/left/folder-1/page-01.png', name: 'page-01.png', sourceIndex: 1 }
+  ],
+  [
+    { path: '/right/cover-b.png', name: 'cover-b.png', sourceIndex: 0 },
+    { path: '/right/folder-1/page-01.png', name: 'page-01.png', sourceIndex: 1 }
+  ],
+  { field: 'name', order: 'asc' },
+  { field: 'name', order: 'asc' },
+  [
+    { path: '/left/cover-a.png', type: 'file' },
+    { path: '/left/folder-1', type: 'folder' }
+  ],
+  [
+    { path: '/right/cover-b.png', type: 'file' },
+    { path: '/right/folder-1', type: 'folder' }
+  ]
+)
+assert.deepStrictEqual(positionalImageRows.map((row) => [row.left && row.left.path, row.right && row.right.path]), [
+  ['/left/cover-a.png', '/right/cover-b.png'],
+  ['/left/folder-1/page-01.png', '/right/folder-1/page-01.png']
+])
+
 const lpRows = pairImageEntries(
   [
     { path: '/left/group-1/002.jpg', name: '002.jpg', sourceIndex: 0 },

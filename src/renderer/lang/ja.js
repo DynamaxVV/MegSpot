@@ -79,6 +79,8 @@ export default {
   hotkey: {
     desc: '説明',
     key: 'ショートカットキー',
+    add: 'ショートカットを追加',
+    or: 'または',
     back: 'ファイル選択ページに戻る',
     moveUp: '上に移動',
     moveLeft: '左に移動',

@@ -367,9 +367,10 @@ export default {
     keyboardHint() {
       const hotkeys = new Map(this.$store.state.preferenceStore.preference.hotkeys.map((item) => [item.name, item]))
       const formatHotkey = (name) => (hotkeys.get(name)?.keysArr || [])
+        .slice(0, 1)
         .map((keys) => keys.map((key) => PRESET_KEYS_MAP.get(key)?.label || key).join('+'))
-        .join(' / ')
-      return `${formatHotkey('pairPrevious')}${formatHotkey('pairNext')}键翻页，${formatHotkey('pairPreviewLeft')}${formatHotkey('pairPreviewRight')}键切换对比，双击调整单图缩放，${formatHotkey('pairReset')}键复位`
+        .join('')
+      return `${formatHotkey('pairPrevious')}、${formatHotkey('pairNext')}键翻页，${formatHotkey('pairPreviewLeft')}、${formatHotkey('pairPreviewRight')}键切换对比，双击调整单图缩放，${formatHotkey('pairReset')}键复位`
     },
     displayedLeft() {
       return this.displayedImage('left')
@@ -524,8 +525,9 @@ export default {
       const hotkey = (this.$store.state.preferenceStore.preference.hotkeys || [])
         .find((item) => item.name === name)
       return (hotkey?.keysArr || [])
+        .slice(0, 1)
         .map((keys) => keys.map((key) => PRESET_KEYS_MAP.get(key)?.label || key).join('+'))
-        .join(' / ')
+        .join('')
     },
     toggleReviewMode() {
       this.reviewMode = !this.reviewMode

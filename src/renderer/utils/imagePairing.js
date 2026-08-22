@@ -244,6 +244,11 @@ const pairImageEntriesInScope = (
 ) => {
   const leftSorted = sortImageEntries(leftEntries, leftSort)
   const rightSorted = sortImageEntries(rightEntries, rightSort)
+  if (leftSource && rightSource
+    && leftSource.type === 'file' && rightSource.type === 'file'
+    && leftSorted.length === 1 && rightSorted.length === 1) {
+    return [createRow(leftSorted[0], rightSorted[0])]
+  }
   const rightQueues = rightSorted.reduce((map, entry, index) => {
     const key = normalizeBaseName(entry.name)
     map[key] = map[key] || []
