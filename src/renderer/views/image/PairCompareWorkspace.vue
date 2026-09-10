@@ -111,7 +111,6 @@
                 <ImageCanvas
                   v-if="displayedLeft && panelReady"
                   ref="leftCanvas"
-                  :key="`left-${currentRow.id}-${displayedLeft.path}`"
                   :index="0"
                   :path="displayedLeft.path"
                   :displayName="displayedLeft.displayName"
@@ -141,7 +140,6 @@
                 <ImageCanvas
                   v-if="rightDisplayImage && panelReady"
                   ref="rightCanvas"
-                  :key="`${isSingleMode ? 'single' : 'right'}-${currentRow.id}-${rightDisplayImage.path}`"
                   :index="1"
                   :path="rightDisplayImage.path"
                   :displayName="rightDisplayImage.displayName"

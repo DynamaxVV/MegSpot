@@ -50,6 +50,9 @@
             <el-form-item :label="$t('general.colorPickerShowPos')">
               <el-switch v-model="colorPickerShowPos" />
             </el-form-item>
+            <el-form-item :label="$t('imageSetting.showScale')">
+              <el-switch v-model="showScale" />
+            </el-form-item>
             <el-form-item class="annotation-opacity-item" :label="$t('imageSetting.annotationOpacity')">
               <el-slider
                 class="annotation-opacity-slider"
@@ -90,9 +93,11 @@
               {{ releaseDate }}
             </el-col>
           </el-row>
-          <el-row class="row-style">
+          <el-row class="release-row">
             <el-col :span="5">releaseNotes</el-col>
-            <el-col :span="17" style="white-space: break-spaces">{{ releaseNotes }}</el-col>
+            <el-col :span="17">
+              <div class="release-notes">{{ releaseNotes }}</div>
+            </el-col>
           </el-row>
         </el-tab-pane>
         <el-tab-pane name="hotkey" :label="$t('help.hotkey')">
@@ -362,6 +367,14 @@ export default {
         this.setPreference({
           colorPickerShowPos: arg
         })
+      }
+    },
+    showScale: {
+      get() {
+        return this.preference.showScale
+      },
+      set(arg) {
+        this.setPreference({ showScale: arg })
       }
     },
     annotationOpacity: {
@@ -718,6 +731,18 @@ export default {
 <style lang="scss" scoped>
 .row-style {
   height: 25px;
+}
+
+.release-row {
+  min-height: 25px;
+}
+
+.release-notes {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 ::v-deep {

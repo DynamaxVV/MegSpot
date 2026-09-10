@@ -1,7 +1,7 @@
 # MegSpot 内存组件管理及生命周期文档
 
-> 版本：2.2.12-vv1.0.8
-> 更新日期：2026.08.22
+> 版本：2.2.12-vv1.0.9
+> 更新日期：2026.09.11
 
 本文档面向当前二次开发版的图片对比工作区维护者。它描述图片、Canvas、Worker、OpenCV.js、缓存和预加载资源的当前释放约束；不把浏览器或 GPU 的理论回收时间当作已经验证的稳定内存上限。
 
@@ -56,7 +56,7 @@
 
 ### 1.3 对比工作区滤镜状态
 
-`EffectPreview` 的色彩与滤镜参数保存在 `preferenceStore.imageFilter`，gamma 和色阶继续使用同一模块中的持久化配置。`PairCompareWorkspace` 切换对比组时会销毁并重建 `ImageCanvas`，新组件从 Vuex 读取这些参数，因此切换对比组或返回首页不会导致滤镜恢复默认值。滤镜面板的“重置所有”是唯一的显式重置入口。
+`EffectPreview` 的色彩与滤镜参数保存在 `preferenceStore.imageFilter`，gamma 和色阶继续使用同一模块中的持久化配置。`PairCompareWorkspace` 在左右两侧都有图片时会复用现有的 `ImageCanvas` 实例，只更新 `path` 并重新加载图片；因此切换对比组或返回首页不会导致滤镜恢复默认值。某一侧从有图变为缺图时，模板中的 `v-if` 仍会销毁该侧实例。滤镜面板的“重置所有”是唯一的显式重置入口。
 
 ### 1.4 ImageCanvas 加载流程（优化后）
 
@@ -164,6 +164,8 @@ changeGroup → groupStartIndex 变化 → 旧 ImageCanvas 销毁 → 新创建
             → preloadNearbyGroups() → 更新滑动窗口
 beforeDestroy → 撤销 blob URLs、clearPreloadPool、移除 resize 监听
 ```
+
+`Content.vue` 负责旧的多图/快照布局；成对图片任务使用 `PairCompareWorkspace`。后者固定保留左右两个 `ImageCanvas`（对应侧存在图片时），切页只更新 `path`，由组件 watcher 关闭旧文件监听并启动新图片加载，从而避免连续切页时的组件销毁和创建开销。
 
 ### 3.4 keep-alive 组件（ImageRoot / VideoRoot）
 
@@ -325,6 +327,7 @@ ImageCanvas.initImage() 消费:
 | Worker 是否在默认滤镜下仍被调用 | 加 `_isFilterNoOp` 跳过 |
 | cv.Mat 是否在纯看图时创建 | 用 `ensureImageMat()` 懒创建 |
 | v-for 是否用 key | 避免 DOM 重建 |
+| 成对切页是否给 `ImageCanvas` 绑定随路径变化的 key | 会触发组件销毁和创建；保持实例稳定并通过 `path` watcher 重新加载 |
 | 大数据是否用 v-show 而非 v-if | 隐藏时不销毁但保留内存 |
 | 预加载是否用滑动窗口 | 避免 `preload()` 累积 → 用 `setPreloadWindow()` |
 
@@ -334,6 +337,7 @@ ImageCanvas.initImage() 消费:
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 2.2.12-vv1.0.9 | 2026.09.11 | 同步文件夹嵌套定位、组合文件名配对、缩放比例显示、LP 排序优化，以及成对对比切页复用 `ImageCanvas` 和临时性能诊断日志移除 |
 | 2.2.12-vv1.0.8 | 2026.08.22 | 同步滤镜持久化、快捷键配置、单文件配对和单实例启动 |
 | 2.2.12-vv1.0.7 | 2026.08.17 | 同步 LP 配对与审校流程、内容变化刷新和生产页面加载诊断 |
 | 2.2.12-vv1.0.6 | 2026.08.05 | 新增审校模式和本地诊断日志后的生命周期与问题定位说明同步 |

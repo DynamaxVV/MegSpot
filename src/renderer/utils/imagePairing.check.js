@@ -107,6 +107,103 @@ assert.deepStrictEqual(reversedCompositeRows.map((row) => [row.left && row.left.
   ['094.jpeg', '094.jpeg']
 ])
 
+const hyphenCompositeRows = pairImageEntries(
+  [
+    { path: '/left/05.png', name: '05.png' },
+    { path: '/left/06-07.png', name: '06-07.png' },
+    { path: '/left/08.png', name: '08.png' }
+  ],
+  [
+    { path: '/right/05.png', name: '05.png' },
+    { path: '/right/06.png', name: '06.png' },
+    { path: '/right/07.png', name: '07.png' },
+    { path: '/right/08.png', name: '08.png' }
+  ]
+)
+assert.deepStrictEqual(hyphenCompositeRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['05.png', '05.png'],
+  ['06-07.png', '06.png'],
+  [null, '07.png'],
+  ['08.png', '08.png']
+])
+
+const reversedHyphenCompositeRows = pairImageEntries(
+  [
+    { path: '/left/05.png', name: '05.png' },
+    { path: '/left/06.png', name: '06.png' },
+    { path: '/left/07.png', name: '07.png' },
+    { path: '/left/08.png', name: '08.png' }
+  ],
+  [
+    { path: '/right/05.png', name: '05.png' },
+    { path: '/right/06-07.png', name: '06-07.png' },
+    { path: '/right/08.png', name: '08.png' }
+  ]
+)
+assert.deepStrictEqual(reversedHyphenCompositeRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['05.png', '05.png'],
+  ['06.png', '06-07.png'],
+  ['07.png', null],
+  ['08.png', '08.png']
+])
+
+const unpaddedHyphenCompositeRows = pairImageEntries(
+  [
+    { path: '/left/5.png', name: '5.png' },
+    { path: '/left/6-7.png', name: '6-7.png' },
+    { path: '/left/8.png', name: '8.png' }
+  ],
+  [
+    { path: '/right/5.png', name: '5.png' },
+    { path: '/right/6.png', name: '6.png' },
+    { path: '/right/7.png', name: '7.png' },
+    { path: '/right/8.png', name: '8.png' }
+  ]
+)
+assert.deepStrictEqual(unpaddedHyphenCompositeRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['5.png', '5.png'],
+  ['6-7.png', '6.png'],
+  [null, '7.png'],
+  ['8.png', '8.png']
+])
+
+const unpaddedPlusCompositeRows = pairImageEntries(
+  [
+    { path: '/left/5.png', name: '5.png' },
+    { path: '/left/6+7.png', name: '6+7.png' },
+    { path: '/left/8.png', name: '8.png' }
+  ],
+  [
+    { path: '/right/5.png', name: '5.png' },
+    { path: '/right/6.png', name: '6.png' },
+    { path: '/right/7.png', name: '7.png' },
+    { path: '/right/8.png', name: '8.png' }
+  ]
+)
+assert.deepStrictEqual(unpaddedPlusCompositeRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['5.png', '5.png'],
+  ['6+7.png', '6.png'],
+  [null, '7.png'],
+  ['8.png', '8.png']
+])
+
+const unmatchedCompositeRows = pairImageEntries(
+  [
+    { path: '/left/05.png', name: '05.png' },
+    { path: '/left/08.png', name: '08.png' }
+  ],
+  [
+    { path: '/right/05.png', name: '05.png' },
+    { path: '/right/6-7.png', name: '6-7.png' },
+    { path: '/right/08.png', name: '08.png' }
+  ]
+)
+assert.deepStrictEqual(unmatchedCompositeRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['05.png', '05.png'],
+  [null, '6-7.png'],
+  ['08.png', '08.png']
+])
+
 assert.deepStrictEqual(rows.map((row) => [row.left && row.left.path, row.right && row.right.path]), [
   ['/left/a-1.JPG', '/right/A-1.webp'],
   ['/left/B-02.png', '/right/b-02.jpeg'],
@@ -277,14 +374,23 @@ const runSourceChecks = async () => {
   const nestedImagePath = path.join(nestedPath, 'child.png')
   const txtPath = path.join(folderPath, 'notes.txt')
   const singleImagePath = path.join(tmpRoot, 'single.jpg')
+  const nestedOnlyRoot = path.join(tmpRoot, 'nested-only')
+  const nestedOnlyLeaf = path.join(nestedOnlyRoot, 'child', 'leaf')
   try {
     await fs.ensureDir(nestedPath)
+    await fs.ensureDir(nestedOnlyLeaf)
     await Promise.all([
       fs.writeFile(imagePath, 'png'),
       fs.writeFile(nestedImagePath, 'png'),
       fs.writeFile(txtPath, 'txt'),
-      fs.writeFile(singleImagePath, 'jpg')
+      fs.writeFile(singleImagePath, 'jpg'),
+      fs.writeFile(path.join(nestedOnlyRoot, '.DS_Store'), '')
     ])
+    const nestedOnlySources = await ingestImageSources([nestedOnlyRoot])
+    assert.deepStrictEqual(nestedOnlySources.sources, [
+      { path: nestedOnlyLeaf, type: 'folder' }
+    ])
+
     const ingestedSources = await ingestImageSources([
       folderPath,
       singleImagePath,

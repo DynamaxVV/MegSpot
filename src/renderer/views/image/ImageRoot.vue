@@ -100,6 +100,7 @@ import { createNamespacedHelpers } from 'vuex'
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
 import addDragFolderListener from '@/utils/dragFolder.js'
 import { imageCache } from '@/utils/imageCache'
+import { resolveInnermostFolder } from '@/utils/folderPath.js'
 
 export default {
   name: 'ImageRoot',
@@ -145,24 +146,26 @@ export default {
     imageBrowser() {
       this.$router.push('/image/browser')
     },
-    addFolder() {
-      dialog
-        .showOpenDialog({
-          title: 'add folder',
-          properties: ['openDirectory']
-        })
-        .then(({ canceled, filePaths }) => {
-          if (!filePaths || !(filePaths.length > 0)) {
-            this.$message.info('Cancelled to add folder')
-          } else if (this.imageFolders.includes(filePaths[0])) {
-            this.$message.info('The folder has been added.')
-          } else {
-            this.setImageFolders([...this.imageFolders, filePaths[0]])
-            this.$nextTick(() => {
-              this.$message.success('Successed to add folder')
-            })
-          }
-        })
+    async addFolder() {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'add folder',
+        properties: ['openDirectory']
+      })
+      if (canceled || !filePaths || !(filePaths.length > 0)) {
+        this.$message.info('Cancelled to add folder')
+        return
+      }
+
+      const folderPath = await resolveInnermostFolder(filePaths[0])
+      if (this.imageFolders.includes(folderPath)) {
+        this.$message.info('The folder has been added.')
+        return
+      }
+
+      this.setImageFolders([...this.imageFolders, folderPath])
+      this.$nextTick(() => {
+        this.$message.success('Successed to add folder')
+      })
     },
     onClose(data) {
       this.removeExpandData(data.path)

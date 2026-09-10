@@ -3,6 +3,7 @@ import path from 'path'
 import crypto from 'crypto'
 import { dedupeImageEntries, filterDirectChildImageEntries } from './imagePairing.js'
 import { parseTranslationText } from './translationAnnotations'
+import { resolveInnermostFolder } from './folderPath.js'
 
 const toIgnored = (input, reason) => ({ input, reason })
 
@@ -88,12 +89,13 @@ const buildSourcePayload = async (source, sourceIndex) => {
     return { ignored: toIgnored(source.path, 'missing') }
   }
   if (stat.isDirectory()) {
-    const translation = await readFolderTranslation(source.path)
+    const resolvedFolderPath = await resolveInnermostFolder(source.path)
+    const translation = await readFolderTranslation(resolvedFolderPath)
     return {
       source: translation
-        ? { ...toDescriptor(source.path, 'folder'), translation }
-        : toDescriptor(source.path, 'folder'),
-      items: (await readFolderItems(source.path)).map((item) => ({ ...item, sourceIndex }))
+        ? { ...toDescriptor(resolvedFolderPath, 'folder'), translation }
+        : toDescriptor(resolvedFolderPath, 'folder'),
+      items: (await readFolderItems(resolvedFolderPath)).map((item) => ({ ...item, sourceIndex }))
     }
   }
   if (!stat.isFile()) {

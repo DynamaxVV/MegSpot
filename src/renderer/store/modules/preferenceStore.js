@@ -31,7 +31,7 @@ const preferenceStore = {
       moveDistance: 100,
       // 视频控制条位置 fixed(固定在toolbar) / float (悬浮球)
       videoProcessBarStyle: 'fixed',
-      showScale: true,
+      showScale: false,
       showMousePos: true,
       // 成对图片审校标注标记的透明度（百分比）
       annotationOpacity: 100,

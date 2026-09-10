@@ -392,6 +392,7 @@ export default {
   watch: {
     path: {
       handler: function (newVal, oldVal) {
+        const pathChanged = Boolean(newVal && oldVal && newVal !== oldVal)
         this.closeWatcher()
         if (newVal) {
           this.wacther = chokidar
@@ -416,6 +417,9 @@ export default {
                 this.removeImages(path)
               }
             })
+        }
+        if (pathChanged && !this._destroyed) {
+          this.initImage()
         }
       },
       immediate: true

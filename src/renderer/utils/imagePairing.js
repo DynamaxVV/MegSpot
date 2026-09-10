@@ -15,7 +15,8 @@ export const DEFAULT_SORT_CONFIG = {
 
 const IMAGE_FILE_RE = /\.(jpe?g|ico|svg|bmp|avif|tif|tiff|a?png)$/i
 const COPY_SUFFIX_RE = /\s*拷贝$/
-const COMPOSITE_NAME_RE = /^\d+(?:\+\d+)+$/
+const COMPOSITE_NAME_RE = /^\d+(?:[+-]\d+)+$/
+const COMPOSITE_SEPARATOR_RE = /[+-]/
 
 const normalizeNumber = (value) => {
   const num = Number(value)
@@ -41,7 +42,7 @@ const comparePath = (left, right) => NAME_COLLATOR.compare(left.path, right.path
 
 const getCompositeTokens = (name = '') => {
   const baseName = normalizeBaseName(name)
-  return COMPOSITE_NAME_RE.test(baseName) ? baseName.split('+') : []
+  return COMPOSITE_NAME_RE.test(baseName) ? baseName.split(COMPOSITE_SEPARATOR_RE) : []
 }
 
 const getLogicalName = (entry) => {
@@ -92,14 +93,55 @@ const sortRowsByLogicalName = (rows, leftSort, rightSort, leftSorted, rightSorte
     .map((item) => item.row)
 }
 
-const findLpCandidate = (imageName, entries, usedPaths) => {
-  const exactKey = normalizeTranslationImageName(imageName)
-  const exact = entries.find((entry) => !usedPaths.has(entry.path)
-    && normalizeTranslationImageName(entry.name) === exactKey)
+const appendLpCandidate = (index, key, entry) => {
+  const candidates = index.get(key)
+  if (candidates) {
+    candidates.push(entry)
+  } else {
+    index.set(key, [entry])
+  }
+}
+
+const createLpLookup = (entries = []) => {
+  const exact = new Map()
+  const relaxed = new Map()
+  entries.forEach((entry) => {
+    appendLpCandidate(exact, normalizeTranslationImageName(entry.name), entry)
+    appendLpCandidate(relaxed, normalizeBaseName(entry.name), entry)
+  })
+  return {
+    exact,
+    relaxed,
+    exactCursor: new Map(),
+    relaxedCursor: new Map()
+  }
+}
+
+const takeLpCandidate = (index, key, usedPaths, cursor) => {
+  const candidates = index.get(key)
+  if (!candidates) return null
+  let candidateIndex = cursor.get(key) || 0
+  while (candidateIndex < candidates.length && usedPaths.has(candidates[candidateIndex].path)) {
+    candidateIndex += 1
+  }
+  cursor.set(key, candidateIndex)
+  return candidates[candidateIndex] || null
+}
+
+const findLpCandidate = (imageName, lookup, usedPaths) => {
+  const exact = takeLpCandidate(
+    lookup.exact,
+    normalizeTranslationImageName(imageName),
+    usedPaths,
+    lookup.exactCursor
+  )
   if (exact) return exact
-  const relaxedKey = normalizeBaseName(imageName)
-  return entries.find((entry) => !usedPaths.has(entry.path)
-    && normalizeBaseName(entry.name) === relaxedKey) || null
+  return takeLpCandidate(
+    lookup.relaxed,
+    normalizeBaseName(imageName),
+    usedPaths,
+    lookup.relaxedCursor
+  )
 }
 
 const getLpOrder = (translation) => (translation && Array.isArray(translation.imageOrder)
@@ -109,6 +151,19 @@ const getLpOrder = (translation) => (translation && Array.isArray(translation.im
 const isReleasePageRow = (row) => {
   const entry = row && (row.left || row.right)
   return /^999/.test(normalizeBaseName(entry && entry.name))
+}
+
+const createRowPathIndex = (rows) => {
+  const index = new Map()
+  rows.forEach((row, rowIndex) => {
+    const entries = [row && row.left, row && row.right]
+    entries.forEach((entry) => {
+      if (entry && entry.path && !index.has(entry.path)) {
+        index.set(entry.path, rowIndex)
+      }
+    })
+  })
+  return index
 }
 
 const applyLpOrder = (rows, leftEntries, rightEntries, leftSource, rightSource, baselineSide) => {
@@ -126,23 +181,33 @@ const applyLpOrder = (rows, leftEntries, rightEntries, leftSource, rightSource, 
   const order = baselineOrder.length ? baselineOrder : comparisonOrder
   if (!order.length) return rows
   const usedPaths = new Set()
+  const ownerLookup = createLpLookup(ownerEntries)
+  const fallbackLookup = createLpLookup(fallbackEntries)
+  const rowIndexByPath = createRowPathIndex(rows)
+  const priorityIndexes = new Set()
   const priorityRows = []
   order.forEach((imageName) => {
-    const candidate = findLpCandidate(imageName, ownerEntries, usedPaths)
-      || findLpCandidate(imageName, fallbackEntries, usedPaths)
+    const candidate = findLpCandidate(imageName, ownerLookup, usedPaths)
+      || findLpCandidate(imageName, fallbackLookup, usedPaths)
     if (!candidate) return
     usedPaths.add(candidate.path)
-    const rowIndex = rows.findIndex((row) => (row.left && row.left.path === candidate.path)
-      || (row.right && row.right.path === candidate.path))
-    if (rowIndex < 0 || priorityRows.some((item) => item.index === rowIndex)) return
-    priorityRows.push({ index: rowIndex, row: rows[rowIndex] })
+    const rowIndex = rowIndexByPath.get(candidate.path)
+    if (!Number.isInteger(rowIndex) || priorityIndexes.has(rowIndex)) return
+    priorityIndexes.add(rowIndex)
+    priorityRows.push(rows[rowIndex])
   })
   if (!priorityRows.length) return rows
-  const priorityIndexes = new Set(priorityRows.map((item) => item.index))
-  const remainingRows = rows.filter((row, index) => !priorityIndexes.has(index))
-  const releaseRows = remainingRows.filter(isReleasePageRow)
-  const regularRows = remainingRows.filter((row) => !isReleasePageRow(row))
-  return priorityRows.map((item) => item.row).concat(releaseRows, regularRows)
+  const releaseRows = []
+  const regularRows = []
+  rows.forEach((row, index) => {
+    if (priorityIndexes.has(index)) return
+    if (isReleasePageRow(row)) {
+      releaseRows.push(row)
+    } else {
+      regularRows.push(row)
+    }
+  })
+  return priorityRows.concat(releaseRows, regularRows)
 }
 
 const isSupportedImagePath = (filePath = '') => IMAGE_FILE_RE.test(String(filePath).split('?')[0])
@@ -285,8 +350,9 @@ const pairImageEntriesInScope = (
   return applyLpOrder(sortedRows, leftSorted, rightSorted, leftSource, rightSource, baselineSide)
 }
 
-const groupEntriesBySource = (entries = [], sortConfig = DEFAULT_SORT_CONFIG) => {
-  return sortImageEntries(entries, sortConfig).reduce((groups, entry) => {
+const groupEntriesBySource = (entries = []) => {
+  // pairImageEntriesInScope sorts each group; sorting the full list here duplicates that work.
+  return dedupeImageEntries(entries).reduce((groups, entry) => {
     if (!Number.isInteger(entry.sourceIndex)) {
       return groups
     }
@@ -310,8 +376,8 @@ export const pairImageEntries = (
     return pairImageEntriesInScope(leftEntries, rightEntries, leftSort, rightSort,
       leftSources[0], rightSources[0], baselineSide)
   }
-  const leftGroups = groupEntriesBySource(leftEntries, leftSort)
-  const rightGroups = groupEntriesBySource(rightEntries, rightSort)
+  const leftGroups = groupEntriesBySource(leftEntries)
+  const rightGroups = groupEntriesBySource(rightEntries)
   const sourceCount = Math.max(Object.keys(leftGroups).length ? Math.max(...Object.keys(leftGroups)) + 1 : 0,
     Object.keys(rightGroups).length ? Math.max(...Object.keys(rightGroups)) + 1 : 0)
   return Array.from({ length: sourceCount }, (_, sourceIndex) => pairImageEntriesInScope(
