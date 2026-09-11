@@ -18,6 +18,7 @@
 <script>
 import { formatFileSize } from '@/utils/file'
 import { getImageUrlSync } from '@/utils/image'
+import { isPsdPath, loadPsdThumbnailDataUrl } from '@/utils/psdLoader'
 export default {
   name: 'imageThumbnail',
   props: {
@@ -49,25 +50,56 @@ export default {
       return this.file.path
     },
     src() {
+      if (isPsdPath(this.path)) return this.srcValue
       return getImageUrlSync(this.path).replace(/#/g, '%23')
     }
   },
   data() {
     return {
-      checked: false
+      checked: false,
+      srcValue: '',
+      previewLoadToken: 0
     }
   },
   watch: {
+    file: {
+      deep: true,
+      handler() {
+        if (isPsdPath(this.path)) this.loadPreview()
+      }
+    },
     fileList(val) {
       let newList = val
       this.checked = newList.includes(this.file.path) ? true : false
+    },
+    path() {
+      this.loadPreview()
     }
   },
   mounted() {
     this.checked = this.fileList.includes(this.file.path) ? true : false
+    this.loadPreview()
+  },
+  beforeDestroy() {
+    this.previewDestroyed = true
+    this.previewLoadToken += 1
   },
   methods: {
     formatFileSize,
+    async loadPreview() {
+      const token = ++this.previewLoadToken
+      if (!isPsdPath(this.path)) {
+        this.srcValue = ''
+        return
+      }
+      this.srcValue = ''
+      try {
+        const src = await loadPsdThumbnailDataUrl(this.path)
+        if (token === this.previewLoadToken && !this.previewDestroyed) this.srcValue = src
+      } catch (error) {
+        if (token === this.previewLoadToken) console.warn('PSD thumbnail load failed', this.path, error)
+      }
+    },
     updateImageQueue(event) {
       event.preventDefault()
       if (this.fileList.includes(this.file.path)) {

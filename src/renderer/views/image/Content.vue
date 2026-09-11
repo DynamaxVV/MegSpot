@@ -35,6 +35,7 @@ import { debounce } from '@/utils'
 import { getDirectoryPath } from '@/utils/file'
 import { getImageUrlSyncNoCache } from '@/utils/image'
 import { imageCache } from '@/utils/imageCache'
+import { clearPsdCache, isPsdPath, preloadPsdWindow, PSD_DECODE_PURPOSE } from '@/utils/psdLoader'
 import { SnapshotHelper } from '@/tools/compress'
 import * as GLOBAL_CONSTANTS from '@/constants'
 import { createNamespacedHelpers } from 'vuex'
@@ -140,6 +141,7 @@ export default {
     SnapshotHelper.cleanupFiles(this.files)
     store.dispatch('imageSnapshotStore/setFiles', [])
     imageCache.clearPreloadPool()
+    clearPsdCache()
   },
   computed: {
     ...mapGetters(['imageList', 'imageConfig']),
@@ -264,8 +266,14 @@ export default {
     preloadNearbyGroups() {
       if (this.snapshotMode) return
       const paths = this.getNearbyGroupPaths()
-      const urls = paths.map((p) => getImageUrlSyncNoCache(p))
+      const urls = paths.filter((p) => !isPsdPath(p)).map((p) => getImageUrlSyncNoCache(p))
       imageCache.setPreloadWindow(urls)
+      preloadPsdWindow(paths.filter(isPsdPath), {
+        purpose: PSD_DECODE_PURPOSE.display,
+        maxDimension: Math.max(1, Math.ceil(
+          Math.max(this.canvasWidth || 0, this.canvasHeight || 0) * (window.devicePixelRatio || 1)
+        ))
+      })
     },
     ...mapActions(['setImageConfig']),
     ...snapMapActions(['setSnapshotConfig']),

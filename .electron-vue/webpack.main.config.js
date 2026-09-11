@@ -13,7 +13,8 @@ function resolve(dir) {
 
 let mainConfig = {
   entry: {
-    main: path.join(__dirname, '../src/main/index.js')
+    main: path.join(__dirname, '../src/main/index.js'),
+    psdDecodeWorker: path.join(__dirname, '../src/main/services/psdDecodeWorker.js')
   },
   externals: Object.keys(dependencies || {}).reduce((externals, dependency) => {
     externals[dependency] = `commonjs2 ${dependency}`

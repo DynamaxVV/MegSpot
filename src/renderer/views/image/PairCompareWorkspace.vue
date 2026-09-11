@@ -243,6 +243,7 @@ import { createNamespacedHelpers } from 'vuex'
 import ImageCanvas from './components/ImageCanvas'
 import ImageDragDropCompare from './ImageDragDropCompare'
 import { getImageUrlSyncNoCache } from '@/utils/image'
+import { isPsdPath, preloadPsdWindow, PSD_DECODE_PURPOSE } from '@/utils/psdLoader'
 import { inspectImageSourceFreshness } from '@/utils/imageComparisonSources'
 import { findPreviousRowImage } from '@/utils/imagePairing'
 import {
@@ -756,6 +757,7 @@ export default {
         return
       }
       this.workspaceActive = false
+      preloadPsdWindow([])
       window.removeEventListener('keydown', this.handleKeydown, true)
       window.removeEventListener('keyup', this.handleKeyup, true)
       window.removeEventListener('blur', this.cancelPreview, true)
@@ -780,6 +782,23 @@ export default {
         height: Math.max(Math.floor((height - (stacked ? 6 : 0)) / (stacked ? 2 : 1)), 240)
       }
       this.panelReady = true
+      this.preloadNearbyPsdGroups()
+    },
+    getPsdPreloadPaths() {
+      const index = this.compareTask.currentIndex
+      return [this.compareRows[index - 1], this.compareRows[index + 1]]
+        .flatMap((row) => [row && row.left, row && row.right])
+        .map((item) => item && item.path)
+        .filter(isPsdPath)
+    },
+    preloadNearbyPsdGroups() {
+      if (!this.workspaceActive) return
+      preloadPsdWindow(this.getPsdPreloadPaths(), {
+        purpose: PSD_DECODE_PURPOSE.display,
+        maxDimension: Math.max(1, Math.ceil(
+          Math.max(this.panelSize.width || 0, this.panelSize.height || 0) * (window.devicePixelRatio || 1)
+        ))
+      })
     },
     buildSplitList() {
       if (!this.splitAvailable) {
@@ -788,10 +807,12 @@ export default {
       return [
         {
           name: this.currentRow.left.displayName || this.currentRow.left.name,
+          path: this.currentRow.left.path,
           imageUrl: this.getSplitImageUrl(this.currentRow.left.path)
         },
         {
           name: this.currentRow.right.displayName || this.currentRow.right.name,
+          path: this.currentRow.right.path,
           imageUrl: this.getSplitImageUrl(this.currentRow.right.path)
         }
       ]
@@ -1031,6 +1052,7 @@ export default {
         this.selectedAnnotationId = null
         this.showSingleModeNotice()
         this.updateSplitCompare()
+        this.preloadNearbyPsdGroups()
         this.logWorkspaceEvent('compare_row_change', {
           previousRowId: previousValue && previousValue.id,
           hasLeft: Boolean(value && value.left),

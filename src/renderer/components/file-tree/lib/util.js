@@ -32,8 +32,8 @@ export const truncateText = (str, len, ellipsis = '...') => {
 
 export const isImage = (src) =>
   //pcx|raw|tga
-  /\.(jpe?g|ico|svg|bmp|avif|tif|tiff|a?png)(\?.*)?$/.test(src) ||
-  /\.(JPE?G|ICO|SVG|BMP|AVIF|TIF|TIFF|A?PNG)(\?.*)?$/.test(src)
+  /\.(jpe?g|ico|svg|bmp|avif|tif|tiff|a?png|psd)(\?.*)?$/.test(src) ||
+  /\.(JPE?G|ICO|SVG|BMP|AVIF|TIF|TIFF|A?PNG|PSD)(\?.*)?$/.test(src)
 
 export const isVideo = (src) =>
   /(.*)\.(mp4|mov|mkv|rmvb|avi|ts)$/.test(src) || /(.*)\.(MP4|MOV|MKV|RMVB|AVI|TS)$/.test(src)

@@ -93,6 +93,12 @@ import { createNamespacedHelpers } from 'vuex'
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
 const { mapGetters: preferenceMapGetters } = createNamespacedHelpers('preferenceStore')
 import { getImageUrlSyncNoCache } from '@/utils/image'
+import {
+  PSD_DECODE_PURPOSE,
+  invalidatePsdPath,
+  isPsdPath,
+  loadPsdImageElement
+} from '@/utils/psdLoader'
 import { imageCache } from '@/utils/imageCache'
 import { getOverlapRect } from '@/utils/canvas'
 import { throttle, debounce } from '@/utils'
@@ -182,6 +188,9 @@ export default {
         width: 0,
         height: 0
       },
+      psdImageElement: null,
+      psdDecodeMaxDimension: 0,
+      psdDecodePurpose: null,
       bitMap: null,
       imgMat: null,
       imgMatRequestId: null,
@@ -379,6 +388,7 @@ export default {
       this.imgMat = null
     }
     this.bitMap && this.bitMap?.close()
+    this.disposePsdImage()
     // Force release GPU backing store for the canvas
     if (this.canvas) {
       this.canvas.width = 0
@@ -409,6 +419,7 @@ export default {
             })
             .on('change', (path, details) => {
               console.log('image--change', path, details)
+              if (isPsdPath(path)) invalidatePsdPath(path)
               this.initImage(false)
             })
             .on('unlink', (path, details) => {
@@ -425,9 +436,11 @@ export default {
       immediate: true
     },
     _width() {
+      this.maybeReloadPsdForResize()
       this.scheduleCanvasResize()
     },
     _height() {
+      this.maybeReloadPsdForResize()
       this.scheduleCanvasResize()
     },
     'imageConfig.smooth': {
@@ -442,11 +455,19 @@ export default {
             return
           }
           this.initCanvas()
+          if (isPsdPath(this.path)) {
+            this.initImage(false)
+            return
+          }
           this.drawImage()
       }
     },
     'preference.showRGBText': {
       handler(newVal, oldVal) {
+        if (isPsdPath(this.path) && this.ready && newVal !== oldVal) {
+          this.initImage(false)
+          return
+        }
         this.drawImage()
       }
     }
@@ -457,6 +478,34 @@ export default {
       if (this.wacther) {
         this.wacther.close()
         this.wacther = null
+      }
+    },
+    disposePsdImage() {
+      if (this.psdImageElement) {
+        this.psdImageElement.dispose()
+        this.psdImageElement = null
+      }
+      this.psdDecodeMaxDimension = 0
+      this.psdDecodePurpose = null
+    },
+    getPsdDecodeOptions() {
+      const purpose = this.imageConfig.displayMode === 'original'
+        || this.preference.showRGBText
+        || this.triggerRGB
+        ? PSD_DECODE_PURPOSE.original
+        : PSD_DECODE_PURPOSE.display
+      return {
+        purpose,
+        maxDimension: purpose === PSD_DECODE_PURPOSE.original
+          ? 0
+          : Math.max(1, Math.ceil(Math.max(this._width || 0, this._height || 0) * this.devicePixelRatio))
+      }
+    },
+    maybeReloadPsdForResize() {
+      if (!this.ready || !isPsdPath(this.path) || this.imageConfig.displayMode === 'original') return
+      const target = Math.max(1, Math.ceil(Math.max(this._width || 0, this._height || 0) * this.devicePixelRatio))
+      if (target > this.psdDecodeMaxDimension && !this.loading) {
+        this.initImage(false)
       }
     },
     scheduleCanvasResize() {
@@ -796,7 +845,10 @@ export default {
       _canvas.height = img.height
       const _ctx = _canvas.getContext('2d')
       _ctx.drawImage(img, 0, 0)
-      return _ctx.getImageData(0, 0, _canvas.width, _canvas.height)
+      const imageData = _ctx.getImageData(0, 0, _canvas.width, _canvas.height)
+      _canvas.width = 0
+      _canvas.height = 0
+      return imageData
     },
     async initImage(initPosition = true) {
       const token = ++this.imageLoadToken
@@ -807,6 +859,23 @@ export default {
       this.logImageEvent('compare_image_load_start')
       let stage = 'resolve'
       try {
+        this.disposePsdImage()
+        if (isPsdPath(this.path)) {
+          stage = 'decode'
+          const decodeOptions = this.getPsdDecodeOptions()
+          const loaded = await loadPsdImageElement(this.path, decodeOptions)
+          if (this._destroyed || token !== this.imageLoadToken) {
+            loaded.dispose()
+            return
+          }
+          this.psdImageElement = loaded
+          this.psdDecodeMaxDimension = Math.max(loaded.width, loaded.height)
+          this.psdDecodePurpose = decodeOptions.purpose
+          this.image = loaded.image
+          await this.initBitMap()
+          await this.finishImageLoad(token, initPosition, startedAt)
+          return
+        }
         if (/tiff?$/.test(this.path)) {
           stage = 'decode'
           const file = await fse.readFile(this.path)
@@ -836,6 +905,13 @@ export default {
           }
         }
       } catch (error) {
+        if (isPsdPath(this.path)) {
+          this.disposePsdImage()
+          if (this.bitMap) {
+            this.bitMap.close()
+            this.bitMap = null
+          }
+        }
         this.failImageLoad(error, token, startedAt, stage)
       }
     },
@@ -1000,6 +1076,17 @@ export default {
     },
     pickColor({ status }) {
       this.triggerRGB = status
+      if (status && isPsdPath(this.path) && this.ready && this.psdDecodePurpose !== PSD_DECODE_PURPOSE.original) {
+        this.initImage(false)
+        return
+      }
+      if (!status && isPsdPath(this.path) && this.ready
+        && this.imageConfig.displayMode !== 'original'
+        && !this.preference.showRGBText
+        && this.psdDecodePurpose === PSD_DECODE_PURPOSE.original) {
+        this.initImage(false)
+        return
+      }
       if (status) {
         this.$nextTick(() => this.changeRGBA())
       }

@@ -1,7 +1,7 @@
 # MegSpot 内存组件管理及生命周期文档
 
-> 版本：2.2.12-vv1.0.9
-> 更新日期：2026.09.11
+> 版本：2.2.12-vv1.0.10
+> 更新日期：2026.09.12
 
 本文档面向当前二次开发版的图片对比工作区维护者。它描述图片、Canvas、Worker、OpenCV.js、缓存和预加载资源的当前释放约束；不把浏览器或 GPU 的理论回收时间当作已经验证的稳定内存上限。
 
@@ -71,6 +71,22 @@ initImage()
 └─ cv.Mat 懒创建          → 仅当直方图/RGB文本/滤镜需要时通过 ensureImageMat()
 ```
 
+PSD 路径不进入普通 `Image` 预加载池，而是走共享的 `psdLoader`：
+
+```
+PSD 路径
+├─ 扫描阶段：只记录 path + mtime + size，不解析文件
+├─ thumbnail → 320px 以内的预览合成图
+├─ display   → 按当前画布显示尺寸的合成图
+└─ original  → 仅原图/像素检查时请求完整分辨率
+
+psdLoader → ipcRenderer → 主进程 PsdDecoder → psdDecodeWorker
+                                      └─ ag-psd：只读取 composite image data
+```
+
+`ImageCanvas`、分割模式和缩略图都复用同一个 `psdLoader`。缓存身份由
+`path + mtime + size` 确定；文件身份变化会创建新条目并使旧条目失效。PSD 预加载只保留当前对比组前后各一组，不占用普通图片的 24 张预加载窗口。
+
 ---
 
 ## 2. 内存资源类型与大小
@@ -82,6 +98,8 @@ initImage()
 | `HTMLImageElement` | `new Image()` | ~200MB | 跟随组件实例 | `image = null` |
 | `cv.Mat` | `cv.imread()` | ~200MB | 需 `.delete()` | **懒创建**：仅直方图/RGB/滤镜需要 |
 | `ImageData` | `getImageData()` | ~200MB (临时) | GC 回收 | **跳过 Worker 时免创建** |
+| PSD 原始 Buffer | `psdDecodeWorker` 读取文件 | 取决于文件 | 解码 `finally` 置空 | 不回传到渲染进程 |
+| PSD 合成图 `ImageData` | Worker `readPsd()` | 解码分辨率 | 缩放/回传后置空 | 跳过图层像素数据 |
 | `OffscreenCanvas` | `new OffscreenCanvas()` | ~200MB (临时) | GC 回收 | 同上 |
 | `Blob` | `imageToBlob()` | 压缩后 | 函数作用域 | — |
 | 路径字符串 | Vuex 存储 | ~100B/张 | 持久化 | — |
@@ -133,6 +151,19 @@ initImage()
 └─ reDraw() → 绘制到屏幕
 ```
 
+PSD 分支改为：
+
+```
+loadPsdImageElement()
+├─ 以 path + mtime + size + 用途/尺寸取得共享缓存
+├─ Worker 返回合成图 RGBA
+├─ 临时 ImageData 写入专用 Canvas
+├─ release() 共享栅格
+└─ ImageCanvas 创建 ImageBitmap；切换/销毁时 dispose Canvas 并 close Bitmap
+```
+
+Worker 完成后立即释放 PSD 原始 Buffer、临时 `ImageData` 和中间对象；渲染进程只保留当前画布需要的 Canvas/`ImageBitmap`。完整分辨率条目在不再被当前视图引用后主动从缓存移除。
+
 **beforeDestroy 清理：**
 ```
 1. this._destroyed = true          → 阻止 Worker 异步回调
@@ -160,8 +191,9 @@ mounted/deactivated 生命周期：
 
 ```
 mounted → preloadNearbyGroups()   → 前1+后1组预热
-changeGroup → groupStartIndex 变化 → 旧 ImageCanvas 销毁 → 新创建
-            → preloadNearbyGroups() → 更新滑动窗口
+changeGroup (legacy Content) → 按旧布局清理/更新资源
+PairCompareWorkspace       → 保留左右 ImageCanvas → 仅更新 path 并重新加载
+                             → preloadNearbyGroups() → 更新滑动窗口
 beforeDestroy → 撤销 blob URLs、clearPreloadPool、移除 resize 监听
 ```
 
@@ -227,6 +259,15 @@ changeGroup() 或 mounted() 时:
 ImageCanvas.initImage() 消费:
   → takePreloaded(url) → 命中则复用，避免重复解码
 ```
+
+### 4.3 PSD 专用缓存与预加载
+
+`src/renderer/utils/psdLoader.js` 使用独立 Map，不复用 `imageCache` 的普通图片池：
+
+- `thumbnail` 固定使用低分辨率预览；`display` 按当前画布尺寸请求；`original` 不限制最大尺寸。
+- 同一身份和用途的并发请求共享一个 Promise，避免 `ImageCanvas`、分割模式和缩略图重复解码。
+- 当前工作区只向 `preloadPsdWindow()` 传入上一组和下一组的 PSD 路径；窗口变化时旧条目立即退出预加载窗口，进行中的请求完成后进入有上限的共享缓存，便于用户立刻切入相邻组时复用。
+- 读取前后由主进程重新校验 `mtime` 和 `size`；若文件变化，返回 `PSD_FILE_CHANGED`，旧栅格不会继续作为新内容使用。
 
 ---
 
@@ -337,6 +378,7 @@ ImageCanvas.initImage() 消费:
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 2.2.12-vv1.0.10 | 2026.09.12 | 新增 PSD 合成图解码 Worker、分级解码、路径与文件身份缓存，前后各一组 PSD 预加载和资源释放约束；成对切页复用左右 `ImageCanvas` |
 | 2.2.12-vv1.0.9 | 2026.09.11 | 同步文件夹嵌套定位、组合文件名配对、缩放比例显示、LP 排序优化，以及成对对比切页复用 `ImageCanvas` 和临时性能诊断日志移除 |
 | 2.2.12-vv1.0.8 | 2026.08.22 | 同步滤镜持久化、快捷键配置、单文件配对和单实例启动 |
 | 2.2.12-vv1.0.7 | 2026.08.17 | 同步 LP 配对与审校流程、内容变化刷新和生产页面加载诊断 |

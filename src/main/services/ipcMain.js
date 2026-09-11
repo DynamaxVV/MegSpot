@@ -1,4 +1,5 @@
-import { ipcMain, dialog } from 'electron'
+import { app, ipcMain, dialog } from 'electron'
+import { psdDecoder } from './psdDecoder'
 
 export default {
   Mainfunc(mainWindow, IsUseSysTitle) {
@@ -33,5 +34,7 @@ export default {
     ipcMain.handle('open-errorbox', (event, arg) => {
       dialog.showErrorBox(arg.title, arg.message)
     })
+    ipcMain.handle('psd:decode', async (_event, options) => psdDecoder.decode(options))
+    app.once('will-quit', () => psdDecoder.dispose())
   }
 }

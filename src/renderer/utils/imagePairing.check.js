@@ -43,6 +43,7 @@ assert.deepStrictEqual(deduped.map((item) => item.path), [
 
 const ingested = filterDirectChildImageEntries([
   { path: '/left/direct.png', name: 'direct.png', lastModifyTime: 1, size: 10, isFile: true },
+  { path: '/left/design.PSD', name: 'design.PSD', lastModifyTime: 1, size: 11, isFile: true },
   { path: '/left/direct.png', name: 'direct.png', lastModifyTime: 2, size: 20, isFile: true },
   { path: '/left/nested/child.png', name: 'child.png', lastModifyTime: 3, size: 30, isFile: true },
   { path: '/left/notes.txt', name: 'notes.txt', lastModifyTime: 4, size: 40, isFile: true },
@@ -51,7 +52,7 @@ const ingested = filterDirectChildImageEntries([
   null
 ], '/left')
 
-assert.deepStrictEqual(ingested.map((item) => item.path), ['/left/direct.png'])
+assert.deepStrictEqual(ingested.map((item) => item.path), ['/left/direct.png', '/left/design.PSD'])
 
 const rows = pairImageEntries(
   leftItems,
@@ -371,6 +372,7 @@ const runSourceChecks = async () => {
   const folderPath = path.join(tmpRoot, 'folder')
   const nestedPath = path.join(folderPath, 'nested')
   const imagePath = path.join(folderPath, 'direct.png')
+  const psdPath = path.join(folderPath, 'design.psd')
   const nestedImagePath = path.join(nestedPath, 'child.png')
   const txtPath = path.join(folderPath, 'notes.txt')
   const singleImagePath = path.join(tmpRoot, 'single.jpg')
@@ -381,6 +383,7 @@ const runSourceChecks = async () => {
     await fs.ensureDir(nestedOnlyLeaf)
     await Promise.all([
       fs.writeFile(imagePath, 'png'),
+      fs.writeFile(psdPath, 'not parsed during scan'),
       fs.writeFile(nestedImagePath, 'png'),
       fs.writeFile(txtPath, 'txt'),
       fs.writeFile(singleImagePath, 'jpg'),
@@ -406,6 +409,7 @@ const runSourceChecks = async () => {
     ])
     assert.deepStrictEqual(ingestedSources.items.map((item) => item.path).sort(), [
       imagePath,
+      psdPath,
       singleImagePath
     ].sort())
     assert.deepStrictEqual(ingestedSources.ignored.map((item) => item.reason), [
@@ -433,7 +437,7 @@ const runSourceChecks = async () => {
         }
       }
     ])
-    assert.deepStrictEqual(rebuiltSources.items.map((item) => item.path), [imagePath])
+    assert.deepStrictEqual(rebuiltSources.items.map((item) => item.path).sort(), [imagePath, psdPath].sort())
     assert.deepStrictEqual(rebuiltSources.ignored, [
       { input: singleImagePath, reason: 'missing' }
     ])
@@ -461,10 +465,10 @@ assert.strictEqual(hasTranslationSetChanged(
 ), true)
     const freshScan = await inspectImageSourceFreshness(
       ingestedSources.sources,
-      [{ path: imagePath, lastModifyTime: 999 }]
+      [{ path: imagePath, lastModifyTime: 999 }, { path: psdPath, lastModifyTime: 999 }]
     )
     assert.strictEqual(freshScan.stale, false)
-    assert.deepStrictEqual(freshScan.scan.items.map((item) => item.path), [imagePath])
+    assert.deepStrictEqual(freshScan.scan.items.map((item) => item.path).sort(), [imagePath, psdPath].sort())
     const staleScan = await inspectImageSourceFreshness(
       ingestedSources.sources,
       [{ path: singleImagePath }]

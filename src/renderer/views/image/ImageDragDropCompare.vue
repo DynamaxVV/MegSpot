@@ -73,6 +73,7 @@ import { createNamespacedHelpers } from 'vuex'
 const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
 import { throttle } from '@/utils'
 import { getImageUrlSync } from '@/utils/image'
+import { PSD_DECODE_PURPOSE, isPsdPath, loadPsdImageElement } from '@/utils/psdLoader'
 import SelectedBtn from '@/components/selected-btn'
 import { EOF, DELIMITER, SORTING_FILE_NAME } from '@/constants'
 
@@ -117,6 +118,9 @@ export default {
       line2: null, //横线
       image1: null,
       image2: null,
+      image1PsdElement: null,
+      image2PsdElement: null,
+      imageLoadToken: 0,
       image1Name: '',
       image2Name: '',
       showName1: true,
@@ -161,22 +165,18 @@ export default {
     },
     'imageConfig.displayMode'() {
       if (this.canvas && this.imagePosition.width) {
+        if (this.hasPsdImage()) {
+          this.initImage()
+          return
+        }
         this.initCanvas()
         this.drawImage()
       }
     },
     showCompare(val) {
       if (!val && this.isExternal) {
-        if (this.imageBitMap1) {
-          this.imageBitMap1.close()
-          this.imageBitMap1 = null
-        }
-        if (this.imageBitMap2) {
-          this.imageBitMap2.close()
-          this.imageBitMap2 = null
-        }
-        this.image1 = null
-        this.image2 = null
+        this.imageLoadToken += 1
+        this.disposeImageResources()
       }
     }
   },
@@ -195,16 +195,8 @@ export default {
   beforeDestroy() {
     window.removeEventListener('keydown', this.handleHotKey, true)
     window.removeEventListener('resize', this.resize, true)
-    if (this.imageBitMap1) {
-      this.imageBitMap1.close()
-      this.imageBitMap1 = null
-    }
-    if (this.imageBitMap2) {
-      this.imageBitMap2.close()
-      this.imageBitMap2 = null
-    }
-    this.image1 = null
-    this.image2 = null
+    this.imageLoadToken += 1
+    this.disposeImageResources()
     // Release GPU canvas backing store
     if (this.canvas) {
       this.canvas.width = 0
@@ -213,6 +205,58 @@ export default {
   },
   methods: {
     ...mapActions(['removeImages', 'emptyImages', 'setImages']),
+    disposeImageResources() {
+      if (this.imageBitMap1) this.imageBitMap1.close()
+      if (this.imageBitMap2) this.imageBitMap2.close()
+      this.imageBitMap1 = null
+      this.imageBitMap2 = null
+      if (this.image1PsdElement) this.image1PsdElement.dispose()
+      if (this.image2PsdElement) this.image2PsdElement.dispose()
+      this.image1PsdElement = null
+      this.image2PsdElement = null
+      if (this.image1 && this.image1.src) this.image1.src = ''
+      if (this.image2 && this.image2.src) this.image2.src = ''
+      this.image1 = null
+      this.image2 = null
+    },
+    hasPsdImage() {
+      if (!this.isExternal) return this.selectedList.some(isPsdPath)
+      return this.imageInfoList?.some((item) => isPsdPath(item.path || item.imageUrl)) || false
+    },
+    getPsdDecodeOptions() {
+      const purpose = this.imageConfig.displayMode === 'original'
+        ? PSD_DECODE_PURPOSE.original
+        : PSD_DECODE_PURPOSE.display
+      return {
+        purpose,
+        maxDimension: purpose === PSD_DECODE_PURPOSE.original
+          ? 0
+          : Math.max(1, Math.ceil(Math.max(this.canvas?.clientWidth || 0, this.canvas?.clientHeight || 0) * this.devicePixelRatio))
+      }
+    },
+    loadNormalImage(src) {
+      return new Promise((resolve, reject) => {
+        const image = new Image()
+        const timeout = setTimeout(() => reject(new Error('image_load_timeout')), 15000)
+        image.onload = () => {
+          clearTimeout(timeout)
+          resolve({ image, dispose() {} })
+        }
+        image.onerror = () => {
+          clearTimeout(timeout)
+          reject(new Error('image_load_failed'))
+        }
+        image.src = src
+      })
+    },
+    async loadImageEntry(entry, selected) {
+      const sourcePath = entry?.path || selected
+      if (sourcePath && isPsdPath(sourcePath)) {
+        return loadPsdImageElement(sourcePath, this.getPsdDecodeOptions())
+      }
+      const src = this.imageInfoList ? selected : getImageUrlSync(selected)
+      return this.loadNormalImage(src)
+    },
     resize: throttle(100, function () {
       this.imgScale = 1
       this.initCanvas()
@@ -339,35 +383,51 @@ export default {
       this.line2.style.top = this.hoverHight / 2 + 'px'
     },
     //初始化图片
-    initImage() {
+    async initImage() {
+      const token = ++this.imageLoadToken
       this.imgScale = 1
-      this.image1 = new Image()
-      this.image2 = new Image()
+      this.disposeImageResources()
 
       this.selectedList = [...this.imageList.slice(0, 2)]
+      const entry1 = this.imageInfoList?.find((item) => item.imageUrl === this.selectedList[0]) || this.imageInfoList?.[0]
+      const entry2 = this.imageInfoList?.find((item) => item.imageUrl === this.selectedList[1]) || this.imageInfoList?.[1]
 
       if (this.isExternal) {
-        this.image1Name = this.imageInfoList[0].name
-        this.image2Name = this.imageInfoList[1].name
+        this.image1Name = entry1?.name || ''
+        this.image2Name = entry2?.name || ''
       } else {
-        const namePaths1 = this.imageList[0].split(DELIMITER)
+        const namePaths1 = (this.selectedList[0] || '').split(DELIMITER)
         this.image1Name = namePaths1[namePaths1.length - 1]
-        const namePaths2 = this.imageList[1].split(DELIMITER)
+        const namePaths2 = (this.selectedList[1] || '').split(DELIMITER)
         this.image2Name = namePaths2[namePaths2.length - 1]
       }
 
-      let imgSrc1 = this.imageInfoList ? this.selectedList[0] : getImageUrlSync(this.selectedList[0]) //默认只取列表中前两个进行比较
-      let imgSrc2 = this.imageInfoList ? this.selectedList[1] : getImageUrlSync(this.selectedList[1])
-      this.image1.onload = async () => {
-        this.imageBitMap1 = await createImageBitmap(this.image1)
-        this.drawImage()
-      }
-      this.image2.onload = async () => {
+      try {
+        const loaded2 = await this.loadImageEntry(entry2, this.selectedList[1])
+        if (token !== this.imageLoadToken) {
+          loaded2.dispose()
+          return
+        }
+        this.image2 = loaded2.image
+        if (isPsdPath(entry2?.path || this.selectedList[1])) this.image2PsdElement = loaded2
         this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
         this.imageBitMap2 = await createImageBitmap(this.image2)
-        this.image1.src = imgSrc1 //等待第一张图加载完毕再加载第二张图，然后一起绘制
+
+        const loaded1 = await this.loadImageEntry(entry1, this.selectedList[0])
+        if (token !== this.imageLoadToken) {
+          loaded1.dispose()
+          return
+        }
+        this.image1 = loaded1.image
+        if (isPsdPath(entry1?.path || this.selectedList[0])) this.image1PsdElement = loaded1
+        this.imageBitMap1 = await createImageBitmap(this.image1)
+        this.drawImage()
+      } catch (error) {
+        if (token === this.imageLoadToken) {
+          console.warn('Split image load failed', error)
+          this.disposeImageResources()
+        }
       }
-      this.image2.src = imgSrc2
     },
     initNameDicRect() {
       const name1Div = this.$el.querySelector('#name1')

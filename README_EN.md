@@ -31,7 +31,7 @@ This repository is an unofficial modified edition maintained by [vv](https://git
 - **Three comparison layouts**: side by side, single, and split, with keyboard navigation between pairs, temporary opposite-side viewing, and optional zoom-ratio display in the lower-left corner of side-by-side canvases.
 - **Source-change protection**: content edits reload; additions, removals, and renames freeze the task until pairs are explicitly refreshed.
 - **Review annotations**: read valid TXT annotations from image-source folders, show annotation numbers on the canvases, and inspect review text in a side panel.
-- **Large-image and rapid-navigation work**: reuse the left and right <code>ImageCanvas</code> instances during side-by-side page turns to avoid repeated component creation, while managing thumbnail caches, <code>ImageBitmap</code>, OpenCV matrices, Blob URLs, Canvas backing stores, and nearby-pair preloading.
+- **Large-image and rapid-navigation work**: reuse the left and right <code>ImageCanvas</code> instances during side-by-side page turns to avoid repeated component creation, while managing thumbnail caches, <code>ImageBitmap</code>, OpenCV matrices, Blob URLs, Canvas backing stores, and nearby-pair preloading. PSD files use a dedicated decode worker, purpose-based resolution tiers, and only the previous and next pair are preloaded.
 - **Local diagnostics**: correlate pairing actions, image loading failures, and render exceptions to make white-screen or loading issues easier to investigate.
 - **Interaction updates**: configurable hotkeys, Space-to-reset, double-click single-image selection, and Original/High-resolution display modes.
 

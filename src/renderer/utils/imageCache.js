@@ -4,6 +4,7 @@
 
 const MAX_CACHE_SIZE = 30
 const MAX_PRELOAD_POOL = 24
+const isPsdUrl = (url) => /\.psd(?:[?#].*)?$/i.test(String(url || ''))
 
 class ImageCacheManager {
   constructor(maxSize = MAX_CACHE_SIZE) {
@@ -81,7 +82,8 @@ class ImageCacheManager {
    * This prevents unbounded accumulation across group navigations.
    */
   setPreloadWindow(urls) {
-    const urlSet = new Set(urls)
+    const normalUrls = (Array.isArray(urls) ? urls : []).filter((url) => !isPsdUrl(url))
+    const urlSet = new Set(normalUrls)
     // Evict entries no longer in the window
     for (const [url, { img }] of this.preloadPool) {
       if (!urlSet.has(url)) {
@@ -90,7 +92,7 @@ class ImageCacheManager {
       }
     }
     // Preload new entries not yet in the pool
-    for (const url of urls) {
+    for (const url of normalUrls) {
       if (this.preloadPool.has(url) || this.cache.has(url)) continue
       const img = new Image()
       const entry = { img, loaded: false }
@@ -115,7 +117,7 @@ class ImageCacheManager {
    * @param {string[]} urls - Image URLs to preload
    */
   preload(urls) {
-    for (const url of urls) {
+    for (const url of (Array.isArray(urls) ? urls : []).filter((url) => !isPsdUrl(url))) {
       if (this.preloadPool.has(url) || this.cache.has(url)) continue
 
       const img = new Image()

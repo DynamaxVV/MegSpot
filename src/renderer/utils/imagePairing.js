@@ -13,7 +13,7 @@ export const DEFAULT_SORT_CONFIG = {
   order: 'asc'
 }
 
-const IMAGE_FILE_RE = /\.(jpe?g|ico|svg|bmp|avif|tif|tiff|a?png)$/i
+const IMAGE_FILE_RE = /\.(jpe?g|ico|svg|bmp|avif|tif|tiff|a?png|psd)$/i
 const COPY_SUFFIX_RE = /\s*拷贝$/
 const COMPOSITE_NAME_RE = /^\d+(?:[+-]\d+)+$/
 const COMPOSITE_SEPARATOR_RE = /[+-]/

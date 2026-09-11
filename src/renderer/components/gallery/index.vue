@@ -52,8 +52,9 @@
                         </span>
                       </div>
                       <div class="content" flex="main:center cross:center">
-                        <img v-if="isImage(item)" v-lazy="getImageUrlSync(item)" name="dragItem" width="200px" height="130px" loading="lazy" decoding="async" />
-                        <video v-if="isVideo(item)" v-lazy="getImageUrlSync(item)" name="dragItem" width="200px" height="130px" loading="lazy" />
+                        <PsdPreviewImage v-if="isPsdPath(item)" :path="item" />
+                        <img v-else-if="isImage(item)" v-lazy="getImageUrlSync(item)" name="dragItem" width="200px" height="130px" loading="lazy" decoding="async" />
+                        <video v-else-if="isVideo(item)" v-lazy="getImageUrlSync(item)" name="dragItem" width="200px" height="130px" loading="lazy" />
                       </div>
                       <div class="name" :title="item">
                         <span v-html="$options.filters.getFileName(item)"></span>
@@ -76,6 +77,8 @@
 <script>
 import { getImageUrlSync } from '@/utils/image'
 import { isImage, isVideo } from '@/components/file-tree/lib/util'
+import { isPsdPath } from '@/utils/psdLoader'
+import PsdPreviewImage from '@/components/thumbnail/PsdPreviewImage.vue'
 import draggable from 'vuedraggable'
 import { arraySortByName } from '@/utils/file'
 import { i18nRender } from '@/lang'
@@ -83,7 +86,7 @@ import { DELIMITER } from '@/constants'
 
 export default {
   name: 'gallery',
-  components: { draggable },
+  components: { draggable, PsdPreviewImage },
   props: {
     selectedList: {
       type: Array,
@@ -163,6 +166,7 @@ export default {
   methods: {
     isImage,
     isVideo,
+    isPsdPath,
     getImageUrlSync,
     handleWrapperClick() {
       if (!this.closeOnClickModal) return
