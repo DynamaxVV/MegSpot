@@ -1,5 +1,5 @@
 import path from 'path'
-import { normalizeTranslationImageName } from './translationAnnotations'
+import { normalizeTranslationImageName } from './translationAnnotations.js'
 
 const NAME_COLLATOR = new Intl.Collator('zh', {
   numeric: true,
@@ -305,8 +305,19 @@ const pairImageEntriesInScope = (
   rightSort = DEFAULT_SORT_CONFIG,
   leftSource = null,
   rightSource = null,
-  baselineSide = 'left'
+  baselineSide = 'left',
+  matchInOrder = false
 ) => {
+  if (matchInOrder) {
+    const leftSorted = sortImageEntries(leftEntries, leftSort)
+    const rightSorted = sortImageEntries(rightEntries, rightSort)
+    const maxLen = Math.max(leftSorted.length, rightSorted.length)
+    const rows = []
+    for (let i = 0; i < maxLen; i += 1) {
+      rows.push(createRow(leftSorted[i] || null, rightSorted[i] || null))
+    }
+    return rows
+  }
   const leftSorted = sortImageEntries(leftEntries, leftSort)
   const rightSorted = sortImageEntries(rightEntries, rightSort)
   if (leftSource && rightSource
@@ -362,6 +373,30 @@ const groupEntriesBySource = (entries = []) => {
   }, {})
 }
 
+export const normalizeMatchInOrder = (matchInOrder) => {
+  if (typeof matchInOrder === 'object' && matchInOrder !== null) {
+    const result = {}
+    Object.keys(matchInOrder).forEach((key) => {
+      result[key] = Boolean(matchInOrder[key])
+    })
+    return result
+  }
+  return Boolean(matchInOrder)
+}
+
+export const isMatchInOrderForIndex = (matchInOrder, sourceIndex = 0) => {
+  if (typeof matchInOrder === 'object' && matchInOrder !== null) {
+    if (sourceIndex in matchInOrder) {
+      return Boolean(matchInOrder[sourceIndex])
+    }
+    if (String(sourceIndex) in matchInOrder) {
+      return Boolean(matchInOrder[String(sourceIndex)])
+    }
+    return false
+  }
+  return Boolean(matchInOrder)
+}
+
 export const pairImageEntries = (
   leftEntries = [],
   rightEntries = [],
@@ -369,26 +404,32 @@ export const pairImageEntries = (
   rightSort = DEFAULT_SORT_CONFIG,
   leftSources = [],
   rightSources = [],
-  baselineSide = 'left'
+  baselineSide = 'left',
+  matchInOrder = false
 ) => {
   const hasSourceOrder = leftEntries.concat(rightEntries).some((entry) => Number.isInteger(entry?.sourceIndex))
   if (!hasSourceOrder) {
+    const isGroupOrder = isMatchInOrderForIndex(matchInOrder, 0)
     return pairImageEntriesInScope(leftEntries, rightEntries, leftSort, rightSort,
-      leftSources[0], rightSources[0], baselineSide)
+      leftSources[0], rightSources[0], baselineSide, isGroupOrder)
   }
   const leftGroups = groupEntriesBySource(leftEntries)
   const rightGroups = groupEntriesBySource(rightEntries)
   const sourceCount = Math.max(Object.keys(leftGroups).length ? Math.max(...Object.keys(leftGroups)) + 1 : 0,
     Object.keys(rightGroups).length ? Math.max(...Object.keys(rightGroups)) + 1 : 0)
-  return Array.from({ length: sourceCount }, (_, sourceIndex) => pairImageEntriesInScope(
-    leftGroups[sourceIndex] || [],
-    rightGroups[sourceIndex] || [],
-    leftSort,
-    rightSort,
-    leftSources[sourceIndex],
-    rightSources[sourceIndex],
-    baselineSide
-  )).flat()
+  return Array.from({ length: sourceCount }, (_, sourceIndex) => {
+    const isGroupOrder = isMatchInOrderForIndex(matchInOrder, sourceIndex)
+    return pairImageEntriesInScope(
+      leftGroups[sourceIndex] || [],
+      rightGroups[sourceIndex] || [],
+      leftSort,
+      rightSort,
+      leftSources[sourceIndex],
+      rightSources[sourceIndex],
+      baselineSide,
+      isGroupOrder
+    )
+  }).flat()
 }
 
 export const relocateCurrentRowIndex = (rows = [], currentRow = null, fallbackIndex = 0) => {
@@ -415,6 +456,7 @@ export const findPreviousRowImage = (rows = [], rowIndex = 0, side = 'left') => 
 }
 
 export const rebuildCompareTask = (task = {}) => {
+  const matchInOrder = normalizeMatchInOrder(task.matchInOrder)
   const leftSort = normalizeSortConfig(task.leftSort)
   const rightSort = normalizeSortConfig(task.rightSort)
   const leftItems = dedupeImageEntries(task.leftItems)
@@ -423,7 +465,7 @@ export const rebuildCompareTask = (task = {}) => {
   const rightSources = task.sources && task.sources.right
   const showFolderName = getSourceFolderCount(leftSources) > 1 || getSourceFolderCount(rightSources) > 1
   const rows = pairImageEntries(leftItems, rightItems, leftSort, rightSort, leftSources, rightSources,
-    task.baselineSide).map((row) => ({
+    task.baselineSide, matchInOrder).map((row) => ({
     ...row,
     left: withDisplayName(row.left, showFolderName),
     right: withDisplayName(row.right, showFolderName)
@@ -435,6 +477,7 @@ export const rebuildCompareTask = (task = {}) => {
     rightItems,
     leftSort,
     rightSort,
+    matchInOrder,
     rows,
     currentIndex: relocateCurrentRowIndex(rows, currentRow, task.currentIndex || 0),
     mode: COMPARE_MODES.includes(task.mode) ? task.mode : DEFAULT_COMPARE_MODE

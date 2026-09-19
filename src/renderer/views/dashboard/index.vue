@@ -111,6 +111,7 @@
                 :title="$t('dashboard.compareTask.buttons.reorderSource')"
               >⠿</span>
               <span v-else></span>
+              <span v-if="getSources(side).length > 1" class="source-group-badge">#{{ index + 1 }}</span>
               <el-tag size="mini" effect="plain">{{ getSourceTypeLabel(source.type) }}</el-tag>
               <el-tooltip :content="source.path" placement="top">
                 <div class="source-copy">
@@ -127,7 +128,67 @@
 
     <section class="preview-panel">
       <div class="preview-header">
-        <h2>{{ $t('dashboard.compareTask.table.title') }}</h2>
+        <div class="preview-title-group">
+          <h2>{{ $t('dashboard.compareTask.table.title') }}</h2>
+          <div v-if="sourceGroups.length" class="group-match-bar">
+            <el-popover
+              placement="bottom-start"
+              :width="sourceGroups.length > 1 ? 340 : 320"
+              trigger="click"
+              popper-class="group-match-popover-popper"
+            >
+              <div class="group-match-popover-content">
+                <div class="popover-title-row">
+                  <span class="popover-title">{{ popoverTitleText }}</span>
+                  <div v-if="sourceGroups.length > 1" class="popover-batch-actions">
+                    <el-button type="text" size="mini" @click="setAllGroupMatchInOrder(true)">
+                      {{ $t('dashboard.compareTask.table.enableAll') }}
+                    </el-button>
+                    <el-divider direction="vertical" />
+                    <el-button type="text" size="mini" @click="setAllGroupMatchInOrder(false)">
+                      {{ $t('dashboard.compareTask.table.disableAll') }}
+                    </el-button>
+                  </div>
+                </div>
+                <div class="popover-group-list">
+                  <div
+                    v-for="group in sourceGroups"
+                    :key="group.index"
+                    class="popover-group-item"
+                    :class="{ disabled: !group.hasBoth }"
+                  >
+                    <div class="popover-group-info">
+                      <span class="popover-group-badge">#{{ group.index + 1 }}</span>
+                      <el-tooltip :content="group.tooltip" placement="top">
+                        <span class="popover-group-names">{{ group.shortLabel }}</span>
+                      </el-tooltip>
+                    </div>
+                    <el-switch
+                      :value="isGroupMatchInOrder(group.index)"
+                      :disabled="!group.hasBoth"
+                      size="mini"
+                      @change="handleGroupMatchInOrderChange(group.index, $event)"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <el-button
+                slot="reference"
+                size="mini"
+                :type="activeGroupCount > 0 ? 'primary' : 'default'"
+                plain
+                round
+                class="group-match-trigger-btn"
+              >
+                <i class="el-icon-connection" />
+                <span>{{ $t('dashboard.compareTask.table.matchInOrder') }}</span>
+                <span class="group-match-count-badge">({{ groupMatchBadgeText }})</span>
+                <i class="el-icon-arrow-down el-icon--right" />
+              </el-button>
+            </el-popover>
+          </div>
+        </div>
         <span>{{ compareRows.length }}</span>
       </div>
       <div v-if="compareRows.length" class="preview-table">
@@ -233,6 +294,48 @@ export default {
     },
     tableRows() {
       return this.compareRows.map((row, index) => ({ ...row, index: index + 1 }))
+    },
+    sourceGroups() {
+      const leftSources = this.getSources('left')
+      const rightSources = this.getSources('right')
+      const count = Math.max(leftSources.length, rightSources.length)
+      if (!count) return []
+      return Array.from({ length: count }, (_, index) => {
+        const left = leftSources[index]
+        const right = rightSources[index]
+        const leftName = left ? this.getSourceName(left.path) : this.$t('dashboard.compareTask.placeholders.missingBaseline')
+        const rightName = right ? this.getSourceName(right.path) : this.$t('dashboard.compareTask.placeholders.missingComparison')
+        const shortLeft = this.truncateName(leftName, 12)
+        const shortRight = this.truncateName(rightName, 12)
+        return {
+          index,
+          left,
+          right,
+          leftName,
+          rightName,
+          hasBoth: Boolean(left && right),
+          shortLabel: `${shortLeft} ↔ ${shortRight}`,
+          tooltip: left && right
+            ? `${left.path} ↔ ${right.path}`
+            : (left ? `${left.path} ↔ ${this.$t('dashboard.compareTask.table.missingGroupSide')}` : `${this.$t('dashboard.compareTask.table.missingGroupSide')} ↔ ${right.path}`)
+        }
+      })
+    },
+    activeGroupCount() {
+      return this.sourceGroups.filter((g) => this.isGroupMatchInOrder(g.index)).length
+    },
+    groupMatchBadgeText() {
+      if (this.sourceGroups.length <= 1) {
+        return this.activeGroupCount > 0
+          ? this.$t('dashboard.compareTask.table.enabled')
+          : this.$t('dashboard.compareTask.table.disabled')
+      }
+      return `${this.activeGroupCount}/${this.sourceGroups.length}`
+    },
+    popoverTitleText() {
+      return this.sourceGroups.length > 1
+        ? this.$t('dashboard.compareTask.table.matchInOrderPopoverTitle')
+        : this.$t('dashboard.compareTask.table.matchInOrderSingleTitle')
     }
   },
   mounted() {
@@ -416,6 +519,41 @@ export default {
       await this.refreshCompareTask({
         [`${storeSide}Sort`]: { ...this.compareTask[`${storeSide}Sort`], order }
       })
+    },
+    truncateName(text, maxChars = 14) {
+      if (!text || text.length <= maxChars) return text || ''
+      const front = Math.ceil((maxChars - 3) / 2)
+      const back = Math.floor((maxChars - 3) / 2)
+      return `${text.slice(0, front)}...${text.slice(-back)}`
+    },
+    isGroupMatchInOrder(index) {
+      const matchInOrder = this.compareTask.matchInOrder
+      if (typeof matchInOrder === 'object' && matchInOrder !== null) {
+        if (index in matchInOrder) {
+          return Boolean(matchInOrder[index])
+        }
+        if (String(index) in matchInOrder) {
+          return Boolean(matchInOrder[String(index)])
+        }
+        return false
+      }
+      return Boolean(matchInOrder)
+    },
+    async handleGroupMatchInOrderChange(index, value) {
+      const current = typeof this.compareTask.matchInOrder === 'object' && this.compareTask.matchInOrder !== null
+        ? { ...this.compareTask.matchInOrder }
+        : { 0: Boolean(this.compareTask.matchInOrder) }
+      current[index] = value
+      await this.refreshCompareTask({ matchInOrder: current })
+    },
+    async setAllGroupMatchInOrder(value) {
+      const current = {}
+      this.sourceGroups.forEach((group) => {
+        if (group.hasBoth) {
+          current[group.index] = value
+        }
+      })
+      await this.refreshCompareTask({ matchInOrder: current })
     },
     async selectRow(row) {
       await this.refreshCompareTask({ currentIndex: row.index - 1 })
@@ -613,10 +751,9 @@ export default {
     }
 
     .source-item {
-      display: grid;
-      grid-template-columns: 12px auto minmax(0, 1fr) auto;
-      gap: 6px;
+      display: flex;
       align-items: center;
+      gap: 8px;
       padding: 8px 10px;
       background: #f8fafc;
       border-radius: 10px;
@@ -629,9 +766,23 @@ export default {
       font-style: normal;
       line-height: 1;
       text-align: center;
+      width: 14px;
+      flex-shrink: 0;
+    }
+
+    .source-group-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #909399;
+      background: #eef1f6;
+      padding: 1px 5px;
+      border-radius: 4px;
+      line-height: 16px;
+      flex-shrink: 0;
     }
 
     .source-copy {
+      flex: 1;
       min-width: 0;
       display: flex;
       flex-direction: column;
@@ -653,16 +804,61 @@ export default {
 
   .preview-panel {
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 
     .preview-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 12px;
+      flex-shrink: 0;
+
+      .preview-title-group {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: nowrap;
+        min-width: 0;
+      }
+
+      .group-match-bar {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .single-group-match {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .multi-group-match-compact {
+        display: inline-flex;
+        align-items: center;
+
+        .group-match-trigger-btn {
+          padding: 5px 12px;
+          font-size: 12px;
+          height: 28px;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+
+          .group-match-count-badge {
+            font-size: 11px;
+            opacity: 0.85;
+            margin-left: 2px;
+          }
+        }
+      }
 
       h2 {
         margin: 0;
         font-size: 18px;
+        white-space: nowrap;
       }
 
       span {
@@ -672,7 +868,7 @@ export default {
 
     .preview-table {
       flex: 1;
-      min-height: 220px;
+      min-height: 0;
       overflow: hidden;
     }
 
@@ -702,6 +898,89 @@ export default {
 
     .preview-panel .preview-table {
       min-height: 180px;
+    }
+  }
+}
+</style>
+
+<style lang="scss">
+.group-match-popover-popper {
+  padding: 12px;
+
+  .group-match-popover-content {
+    .popover-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #ebeef5;
+      margin-bottom: 8px;
+
+      .popover-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #303133;
+      }
+
+      .popover-batch-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+    }
+
+    .popover-group-list {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .popover-group-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 8px;
+      background: #f8fafc;
+      border-radius: 6px;
+      transition: background 0.2s;
+
+      &:hover {
+        background: #f0f2f5;
+      }
+
+      &.disabled {
+        opacity: 0.6;
+      }
+
+      .popover-group-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .popover-group-badge {
+        font-size: 11px;
+        font-weight: 700;
+        color: #909399;
+        background: #e4e7ed;
+        padding: 0 4px;
+        border-radius: 3px;
+        flex-shrink: 0;
+      }
+
+      .popover-group-names {
+        font-size: 12px;
+        color: #606266;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+      }
     }
   }
 }

@@ -2,7 +2,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import crypto from 'crypto'
 import { dedupeImageEntries, filterDirectChildImageEntries } from './imagePairing.js'
-import { parseTranslationText } from './translationAnnotations'
+import { parseTranslationText } from './translationAnnotations.js'
 import { resolveInnermostFolder } from './folderPath.js'
 
 const toIgnored = (input, reason) => ({ input, reason })

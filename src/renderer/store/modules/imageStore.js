@@ -36,6 +36,7 @@ const createCompareTask = () => ({
   started: false,
   dirty: false,
   baselineSide: 'left',
+  matchInOrder: false,
   version: 0
 })
 
@@ -55,6 +56,9 @@ const normalizeCompareTask = (task = {}, fallbackTask = createCompareTask()) => 
   compareTask.started = typeof compareTask.started === 'boolean' ? compareTask.started : false
   compareTask.dirty = typeof compareTask.dirty === 'boolean' ? compareTask.dirty : false
   compareTask.baselineSide = compareTask.baselineSide === 'right' ? 'right' : 'left'
+  compareTask.matchInOrder = typeof compareTask.matchInOrder === 'object' && compareTask.matchInOrder !== null
+    ? { ...compareTask.matchInOrder }
+    : (typeof compareTask.matchInOrder === 'boolean' ? compareTask.matchInOrder : {})
   compareTask.version = Number.isFinite(compareTask.version) ? compareTask.version : 0
   return compareTask
 }
@@ -71,6 +75,7 @@ const summarizeCompareTask = (task = {}) => ({
   mode: task.mode,
   started: Boolean(task.started),
   dirty: Boolean(task.dirty),
+  matchInOrder: task.matchInOrder,
   version: Number.isFinite(task.version) ? task.version : 0
 })
 

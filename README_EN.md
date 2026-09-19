@@ -27,7 +27,7 @@ This repository is an unofficial modified edition maintained by [vv](https://git
 ## What this edition improves
 
 - **Paired image comparison workspace**: add images or folders on the left and right, preview pairing, reorder sources, and enter comparison from one flow.
-- **Explicit pairing rules**: exact basename matching ignores extension and case; remaining images pair in each side's sort order; folders include direct child images only and deduplicate absolute paths. When adding a folder from the home page, a chain with exactly one child folder is resolved to its innermost folder.
+- **Explicit pairing rules**: exact basename matching ignores extension and case, with optional per-group sequential matching (match in order without comparing names); remaining images pair in each side's sort order; folders include direct child images only and deduplicate absolute paths. When adding a folder from the home page, a chain with exactly one child folder is resolved to its innermost folder.
 - **Three comparison layouts**: side by side, single, and split, with keyboard navigation between pairs, temporary opposite-side viewing, and optional zoom-ratio display in the lower-left corner of side-by-side canvases.
 - **Source-change protection**: content edits reload; additions, removals, and renames freeze the task until pairs are explicitly refreshed.
 - **Review annotations**: read valid TXT annotations from image-source folders, show annotation numbers on the canvases, and inspect review text in a side panel.
@@ -43,7 +43,7 @@ Add images or folders on both sides of the dashboard. Each side can contain mult
 
 ### 2. Confirm pairing
 
-The dashboard shows a pairing preview before entering the workspace. Basenames are matched exactly after removing extensions and ignoring case; numeric combinations such as `06-07` and `06+07` also try to match the corresponding single-page image, while unmatched images are then paired according to the sorted order on each side. Confirm the order and unmatched items before continuing.
+The dashboard shows a pairing preview before entering the workspace. Basenames are matched exactly after removing extensions and ignoring case; numeric combinations such as `06-07` and `06+07` also try to match the corresponding single-page image, while unmatched images are then paired according to the sorted order on each side. If you need to pair images by filename order rather than name matching, configure "Match in order" from the popover next to Pair Preview. Confirm the order and unmatched items before continuing.
 
 ### 3. Compare images
 

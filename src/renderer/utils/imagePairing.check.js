@@ -6,6 +6,8 @@ import {
   dedupeImageEntries,
   filterDirectChildImageEntries,
   findPreviousRowImage,
+  isMatchInOrderForIndex,
+  normalizeMatchInOrder,
   pairImageEntries,
   rebuildCompareTask,
   relocateCurrentRowIndex,
@@ -366,6 +368,172 @@ assert.deepStrictEqual(swapped.sources, {
 assert.strictEqual(swapped.leftSort.field, 'size')
 assert.strictEqual(swapped.rightSort.field, 'name')
 assert.strictEqual(swapped.rows[0].left.path, '/right/right-only.png')
+
+// matchInOrder tests
+const inOrderLeft = [
+  { path: '/left/c.png', name: 'c.png' },
+  { path: '/left/a.png', name: 'a.png' },
+  { path: '/left/b.png', name: 'b.png' }
+]
+const inOrderRight = [
+  { path: '/right/03.jpg', name: '03.jpg' },
+  { path: '/right/01.jpg', name: '01.jpg' },
+  { path: '/right/02.jpg', name: '02.jpg' }
+]
+
+const normalMatchRows = pairImageEntries(
+  inOrderLeft,
+  inOrderRight,
+  { field: 'name', order: 'asc' },
+  { field: 'name', order: 'asc' },
+  [],
+  [],
+  'left',
+  false
+)
+// Without matchInOrder, completely different names do not match
+assert.strictEqual(normalMatchRows.length, 6)
+
+const sequentialRows = pairImageEntries(
+  inOrderLeft,
+  inOrderRight,
+  { field: 'name', order: 'asc' },
+  { field: 'name', order: 'asc' },
+  [],
+  [],
+  'left',
+  true
+)
+// With matchInOrder, items are sorted by name asc and paired 1-to-1 directly
+assert.deepStrictEqual(sequentialRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['a.png', '01.jpg'],
+  ['b.png', '02.jpg'],
+  ['c.png', '03.jpg']
+])
+
+// Unequal lengths: left has more items
+const leftHeavyRows = pairImageEntries(
+  inOrderLeft,
+  inOrderRight.slice(0, 2),
+  { field: 'name', order: 'asc' },
+  { field: 'name', order: 'asc' },
+  [],
+  [],
+  'left',
+  true
+)
+assert.deepStrictEqual(leftHeavyRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['a.png', '01.jpg'],
+  ['b.png', '03.jpg'],
+  ['c.png', null]
+])
+
+// Unequal lengths: right has more items
+const rightHeavyRows = pairImageEntries(
+  inOrderLeft.slice(0, 1),
+  inOrderRight,
+  { field: 'name', order: 'asc' },
+  { field: 'name', order: 'asc' },
+  [],
+  [],
+  'left',
+  true
+)
+assert.deepStrictEqual(rightHeavyRows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['c.png', '01.jpg'],
+  [null, '02.jpg'],
+  [null, '03.jpg']
+])
+
+// rebuildCompareTask with matchInOrder
+const rebuiltInOrderTask = rebuildCompareTask({
+  leftItems: inOrderLeft,
+  rightItems: inOrderRight,
+  matchInOrder: true
+})
+assert.strictEqual(rebuiltInOrderTask.matchInOrder, true)
+assert.deepStrictEqual(rebuiltInOrderTask.rows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['a.png', '01.jpg'],
+  ['b.png', '02.jpg'],
+  ['c.png', '03.jpg']
+])
+
+// swapCompareTaskSides preserves matchInOrder
+const swappedInOrderTask = swapCompareTaskSides(rebuiltInOrderTask)
+assert.strictEqual(swappedInOrderTask.matchInOrder, true)
+assert.deepStrictEqual(swappedInOrderTask.rows.map((row) => [row.left && row.left.name, row.right && row.right.name]), [
+  ['01.jpg', 'a.png'],
+  ['02.jpg', 'b.png'],
+  ['03.jpg', 'c.png']
+])
+
+// 1.jpg vs 999.jpg test case (pairing by sequence, not filename identity)
+const userCaseLeft = [{ path: '/left/1.jpg', name: '1.jpg' }]
+const userCaseRight = [{ path: '/right/999.jpg', name: '999.jpg' }]
+
+const userCaseNormal = pairImageEntries(userCaseLeft, userCaseRight, { field: 'name', order: 'asc' }, { field: 'name', order: 'asc' }, [], [], 'left', false)
+assert.strictEqual(userCaseNormal.length, 2)
+assert.strictEqual(userCaseNormal[0].left.name, '1.jpg')
+assert.strictEqual(userCaseNormal[0].right, null)
+assert.strictEqual(userCaseNormal[1].left, null)
+assert.strictEqual(userCaseNormal[1].right.name, '999.jpg')
+
+const userCaseInOrder = pairImageEntries(userCaseLeft, userCaseRight, { field: 'name', order: 'asc' }, { field: 'name', order: 'asc' }, [], [], 'left', true)
+assert.strictEqual(userCaseInOrder.length, 1)
+assert.strictEqual(userCaseInOrder[0].left.name, '1.jpg')
+assert.strictEqual(userCaseInOrder[0].right.name, '999.jpg')
+
+// Helper unit checks
+assert.strictEqual(isMatchInOrderForIndex(true, 0), true)
+assert.strictEqual(isMatchInOrderForIndex(true, 5), true)
+assert.strictEqual(isMatchInOrderForIndex(false, 0), false)
+assert.strictEqual(isMatchInOrderForIndex({ 0: true, 1: false }, 0), true)
+assert.strictEqual(isMatchInOrderForIndex({ 0: true, 1: false }, 1), false)
+assert.strictEqual(isMatchInOrderForIndex({ 0: true, 1: false }, 2), false)
+
+assert.deepStrictEqual(normalizeMatchInOrder(true), true)
+assert.deepStrictEqual(normalizeMatchInOrder(false), false)
+assert.deepStrictEqual(normalizeMatchInOrder({ 0: true, 1: 0 }), { 0: true, 1: false })
+
+// Multi-group independent match test
+const multiGroupLeft = [
+  { path: '/left1/a.jpg', name: 'a.jpg', sourceIndex: 0 },
+  { path: '/left1/b.jpg', name: 'b.jpg', sourceIndex: 0 },
+  { path: '/left2/common_1.jpg', name: 'common_1.jpg', sourceIndex: 1 },
+  { path: '/left2/common_2.jpg', name: 'common_2.jpg', sourceIndex: 1 }
+]
+const multiGroupRight = [
+  { path: '/right1/1.jpg', name: '1.jpg', sourceIndex: 0 },
+  { path: '/right1/2.jpg', name: '2.jpg', sourceIndex: 0 },
+  { path: '/right2/common_1.jpg', name: 'common_1.jpg', sourceIndex: 1 },
+  { path: '/right2/diff.jpg', name: 'diff.jpg', sourceIndex: 1 }
+]
+
+// Group 0 in order (true), Group 1 normal (false)
+const multiGroupRows = pairImageEntries(
+  multiGroupLeft,
+  multiGroupRight,
+  { field: 'name', order: 'asc' },
+  { field: 'name', order: 'asc' },
+  [{ path: '/left1', type: 'folder' }, { path: '/left2', type: 'folder' }],
+  [{ path: '/right1', type: 'folder' }, { path: '/right2', type: 'folder' }],
+  'left',
+  { 0: true, 1: false }
+)
+
+// Group 0 should pair in order: a.jpg <-> 1.jpg, b.jpg <-> 2.jpg
+assert.strictEqual(multiGroupRows[0].left.name, 'a.jpg')
+assert.strictEqual(multiGroupRows[0].right.name, '1.jpg')
+assert.strictEqual(multiGroupRows[1].left.name, 'b.jpg')
+assert.strictEqual(multiGroupRows[1].right.name, '2.jpg')
+
+// Group 1 should pair by filename: common_1.jpg <-> common_1.jpg, common_2.jpg <-> null, null <-> diff.jpg
+assert.strictEqual(multiGroupRows[2].left.name, 'common_1.jpg')
+assert.strictEqual(multiGroupRows[2].right.name, 'common_1.jpg')
+assert.strictEqual(multiGroupRows[3].left.name, 'common_2.jpg')
+assert.strictEqual(multiGroupRows[3].right, null)
+assert.strictEqual(multiGroupRows[4].left, null)
+assert.strictEqual(multiGroupRows[4].right.name, 'diff.jpg')
 
 const runSourceChecks = async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'megspot-image-sources-'))
