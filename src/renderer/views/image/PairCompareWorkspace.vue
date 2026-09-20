@@ -27,8 +27,12 @@
             popper-class="row-list-popover"
             @show="scrollToActiveRow"
           >
-            <div class="row-list" slot="reference">
-              <span class="row-progress-text">{{ currentDisplayIndex }}/{{ compareRows.length }}</span>
+            <div class="row-list" slot="reference" :style="rowListStyle">
+              <span class="row-progress-text">
+                <span class="row-current-index" :style="currentIndexStyle">{{ currentDisplayIndex }}</span>
+                <span class="row-progress-slash">/</span>
+                <span class="row-total-count" :style="totalCountStyle">{{ compareRows.length }}</span>
+              </span>
               <i class="el-icon-arrow-down el-icon--right"></i>
             </div>
             <div ref="rowListScroll" class="row-list-scroll">
@@ -338,6 +342,25 @@ export default {
     },
     currentDisplayIndex() {
       return this.compareRows.length ? this.compareTask.currentIndex + 1 : 0
+    },
+    totalDigits() {
+      return String(this.compareRows.length || 1).length
+    },
+    currentIndexStyle() {
+      return {
+        minWidth: `${this.totalDigits}ch`
+      }
+    },
+    totalCountStyle() {
+      return {
+        minWidth: `${this.totalDigits}ch`
+      }
+    },
+    rowListStyle() {
+      const charCount = this.totalDigits * 2 + 1
+      return {
+        minWidth: `calc(${charCount}ch + 38px)`
+      }
     },
     hasPrev() {
       return this.compareTask.currentIndex > 0
@@ -1152,6 +1175,7 @@ export default {
   .pair-status {
     min-width: 110px;
     color: $labelColor;
+    white-space: nowrap;
   }
 
   .keyboard-hint {
@@ -1428,13 +1452,17 @@ export default {
   }
 
   .row-list {
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
-    padding: 2px 12px;
+    padding: 2px 10px;
     cursor: pointer;
     border-radius: 4px;
     transition: background 0.15s;
+    user-select: none;
+    box-sizing: border-box;
+    flex-shrink: 0;
   }
 
   .row-list:hover {
@@ -1446,7 +1474,36 @@ export default {
   }
 
   .row-progress-text {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    line-height: 1;
+  }
+
+  .row-current-index {
+    display: inline-block;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    white-space: pre;
+  }
+
+  .row-progress-slash {
+    display: inline-block;
+    text-align: center;
+    padding: 0 1px;
+    opacity: 0.7;
+  }
+
+  .row-total-count {
+    display: inline-block;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    white-space: pre;
   }
 
   .dark-bg {
@@ -1454,6 +1511,10 @@ export default {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.1);
       color: #d0d0d0;
+    }
+
+    .row-list:hover {
+      background: rgba(255, 255, 255, 0.12);
     }
 
     ::v-deep .workspace-controls .el-button--default {
