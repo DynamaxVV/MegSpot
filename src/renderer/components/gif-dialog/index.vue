@@ -54,7 +54,7 @@
             <el-button type="primary" @click="generateGifPreview">Generate GIF</el-button>
           </el-form-item>
           <el-form-item>
-            <el-button @click="downloadGif" :disabled="downLoadDisable">DownLoad GIF</el-button>
+            <el-button @click="downloadGif" :disabled="downLoadDisable">Download GIF</el-button>
           </el-form-item>
         </el-form>
       </div>

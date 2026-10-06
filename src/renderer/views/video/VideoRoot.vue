@@ -7,7 +7,7 @@
           type="primary"
           round
           class="tool-item add-folder"
-          title="add folder to root"
+          title="Add folder to root"
           size="mini"
         >
           {{ $t('image.toolbar.addFolder') }}
@@ -141,7 +141,7 @@ export default {
           } else {
             this.setVideoFolders([...this.videoFolders, filePaths[0]])
             this.$nextTick(() => {
-              this.$message.success('Successed to add folder')
+              this.$message.success('Folder added successfully.')
             })
           }
         })

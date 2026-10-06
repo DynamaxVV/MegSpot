@@ -167,7 +167,7 @@ export default {
           } else {
             this.setVideoFolders([...this.videoFolders, folderPath])
             this.$nextTick(() => {
-              this.$message.success('Successed to add folder')
+              this.$message.success('Folder added successfully.')
             })
           }
         } else {

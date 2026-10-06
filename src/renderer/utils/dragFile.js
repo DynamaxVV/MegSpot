@@ -124,11 +124,11 @@ function i18nMsg(paths, repeatList, theCase, type) {
   const fileMsg = (paths) => `file${getS(paths.length)}`
   const fileBeenMsg = (paths) => `${fileMsg(paths)} ${paths.length > 1 ? 'were' : 'was'}`
   const successfulMsg =
-    language === 'zh' ? `成功添加个${paths.length}文件` : `${paths.length} ${fileBeenMsg(paths)} successfully added`
+    language === 'zh' ? `成功添加 ${paths.length} 个文件` : `${paths.length} ${fileBeenMsg(paths)} successfully added`
   const repeatMsg =
     language === 'zh'
-      ? `${repeatList.length}个已添加过的文件未添加`
-      : `${repeatList.length} ${fileMsg(repeatList)} that had been added ${getS(repeatList.length)} not added`
+      ? `${repeatList.length} 个重复文件未添加`
+      : `${repeatList.length} duplicate ${fileMsg(repeatList)} ${repeatList.length === 1 ? 'was' : 'were'} not added`
 
   let message = ''
   switch (theCase) {

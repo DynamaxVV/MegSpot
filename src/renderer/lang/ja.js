@@ -10,7 +10,7 @@ export default {
     reset: 'リセット',
     edit: '編集',
     save: '保存',
-    confirm: 'もちろん',
+    confirm: '確認',
     cancel: 'キャンセル',
     showVideoTip: 'デモビデオを表示'
   },
@@ -24,7 +24,7 @@ export default {
     failure: '失敗',
     canceled: 'キャンセル',
     layout: 'レイアウト',
-    aboutText: 'オン',
+    aboutText: 'アプリについて',
     introduction:
       'MegSpotは、画像比較、ビデオ比較、画像カスタマイズ処理などの便利な機能をユーザーに提供するように設計されたクロスプラットフォームのローカルアプリケーションです。\r\n詳細については、DingdingGroupを入力してください',
     videoPlay: '動画の再生',
@@ -43,8 +43,8 @@ export default {
     float: 'フローティングボール',
     move: '移動距離(ピクセル/キーごとのプレス)',
     defaultFileListShowType: 'ファイルリストのデフォルトの表示タイプ',
-    colorPickerMode: 'カラーピッカーのカラー値の表示形式',
-    colorPickerMode: 'カラーピッカーにカーソル位置情報を表示',
+    colorPickerMode: 'カラーピッカーの色値の表示形式',
+    colorPickerShowPos: 'カラーピッカーにカーソル位置を表示',
     importOrExportSettings: 'インポート/エクスポート設定',
     list: 'リスト',
     share: '共有',
@@ -55,7 +55,7 @@ export default {
     fileName: 'ファイル名',
     fileLoading: 'ファイルを読み込んでいます...',
     filterFileName: 'フィルターファイル名',
-    enableRegular: '通常の有効化/無効化',
+    enableRegular: '正規表現を有効/無効にする',
     groupNum: 'グループ番号\nCtrl + ← 戻る \nCtrl + → 進む',
     lastModifyTime: '更新日付',
     operate: '操作する',
@@ -84,7 +84,7 @@ export default {
     back: 'ファイル選択ページに戻る',
     moveUp: '上に移動',
     moveLeft: '左に移動',
-    moveRight: '向右移动',
+    moveRight: '右に移動',
     moveDown: '下に移動',
     pickColor: 'カラーピッカーのオン/オフを切り替えます',
     rgbText: '各ピクセルブロックのRGB値の表示を有効/無効にします。',
@@ -246,8 +246,13 @@ export default {
   image: {
     sequence: {
       title: '画像シーケンス',
+      label: '現在の画像シーケンス',
       compare: '画像シーケンスを比較する',
-      compareTip: '2 つ以上の画像シーケンスを連続的に比較する'
+      compareTip: '2 つ以上の画像シーケンスを順番に比較します',
+      selectTip: '2 つ以上の画像シーケンスを選択してください',
+      createTip: '新しいシーケンス名を入力し、Enter キーを押して作成します',
+      deleteTip: 'この画像シーケンスを削除',
+      differentSizeTip: '画像シーケンスのサイズが異なります'
     },
     toolbar: {
       openFolder: 'フォルダを開く',
@@ -320,8 +325,8 @@ export default {
     previousFrame: '前のフレーム',
     nextFrame: '次のフレーム',
     frameStep: 'フレーム比較の間隔',
-    frameSteps1: '一つ一つ比較する\n逆さまに: Cmd/Ctrl + b',
-    frameSteps2: '一つ一つ比較する\n再生を再開します: Cmd/Ctrl + n',
+    frameSteps1: 'コマ送り比較\n順方向に再生: Cmd/Ctrl + b',
+    frameSteps2: 'コマ送り比較\n逆方向に再生: Cmd/Ctrl + n',
     horizontalFlip: '左右に反転',
     fullsize: 'フルサイズ',
     originalMode: '原寸モード',
@@ -354,7 +359,7 @@ export default {
     tip: 'デフォルトでは、選択された画像の最初の2つが比較されます。 変更する場合は、選択を開いて切り替えてください。'
   },
   generateGIF: {
-    title: '比較働画GIFを生成',
+    title: '比較GIFアニメを生成',
     image: '比較図',
     description: '説明',
     operation: '操作する',
@@ -395,10 +400,10 @@ export default {
     enableSyncTime: 'ビデオの進行状況の同期'
   },
   sortFile: {
-    apply: '応用',
+    apply: '適用',
     addFolder: 'フォルダーを追加',
-    afterAddFolder: '并从左侧目录树选择文件夹',
-    edit: '次に、左側のディレクトリツリーからフォルダを選択します',
+    afterAddFolder: '左側のフォルダーツリーから選択してください',
+    edit: 'カスタムファイル並べ替え',
     editTip: '以下のリストに表示されるファイルの順序を変更します',
     generate: '生成',
     generateTip: 'クリックして、現在のディレクトリに.MegSpotSort.iniソート構成ファイルを生成します',
@@ -444,11 +449,11 @@ export default {
     tip: 'このチャンネルのヒストグラムを追加/削除します',
     lineWidth: '線幅',
     multi: 'チャンネル選択タイプ',
-    singleType: '無線モード',
+    singleType: '単一選択モード',
     multiType: '複数選択モード',
-    line: '複数選択モード',
-    rect: '充填',
+    line: '線表示',
+    rect: '塗りつぶし',
     backgroundColor: '背景色',
-    drawType: '背景色'
+    drawType: '描画方式'
   }
 }

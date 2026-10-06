@@ -167,7 +167,7 @@
         <div
           id="rgba-container"
           flex="main:center cross:center"
-          :title="`dbclick start or stop get average RGBA value. \nChange region by hover setting button`"
+          :title="`Double-click to start or stop average RGBA sampling. \nMove the pointer over the settings button to change the region.`"
         >
           <el-tooltip effect="light" placement="bottom">
             <div slot="content" id="rgba-region" flex="main:center cross:center">
@@ -381,7 +381,7 @@ export default {
       ) {
         this.$message({
           type: 'warning',
-          message: `new Image size is too small to show current roi pos. Show new Image with adapter layout`
+          message: 'The new image is too small to contain the current ROI. It will be shown using the fit-to-view layout.'
         })
         this.roiPos = this.getFullROI(this.canvasPos, this.sourceMat)
       }
@@ -402,7 +402,7 @@ export default {
         ) {
           this.$message({
             type: 'warning',
-            message: `new Image size is too small to show current roi pos. Show new Image with adapter layout`
+            message: 'The new image is too small to contain the current ROI. It will be shown using the fit-to-view layout.'
           })
           this.roiPos = this.getFullROI(this.canvasPos, this.sourceMat)
         }
@@ -465,7 +465,7 @@ export default {
       if (this.roiPos.rw > this.sourceMat.cols || this.roiPos.rh > this.sourceMat.rows) {
         this.$message({
           type: 'warning',
-          message: `Image size is small than canvas.Show image with adapter layout`
+          message: 'The image is smaller than the canvas. It will be shown using the fit-to-view layout.'
         })
         this.adapterShow()
         return

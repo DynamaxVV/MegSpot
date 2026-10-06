@@ -7,7 +7,7 @@
           type="primary"
           round
           class="toolbar-item add-folder"
-          title="add folder to root"
+          title="Add folder to root"
           size="mini"
         >
           {{ $t('image.toolbar.addFolder') }}
@@ -164,7 +164,7 @@ export default {
 
       this.setImageFolders([...this.imageFolders, folderPath])
       this.$nextTick(() => {
-        this.$message.success('Successed to add folder')
+        this.$message.success('Folder added successfully.')
       })
     },
     onClose(data) {

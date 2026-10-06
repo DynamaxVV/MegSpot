@@ -108,7 +108,7 @@ export default {
         await fse.outputFile(path, data)
         this.$message({
           type: 'success',
-          message: `The sorting file is successfully generated !<br /> and its path is <a style="color: blue;">${path}</a>`,
+          message: `Sorting file generated successfully!<br />Its path is <a style="color: blue;">${path}</a>`,
           dangerouslyUseHTMLString: true
         })
         this.generateVisible = false

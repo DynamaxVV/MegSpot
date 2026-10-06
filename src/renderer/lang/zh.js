@@ -1,7 +1,7 @@
 export default {
   common: {
     supportTypes: '支持多种文件类型:',
-    desc: '当前版本为小v魔改版，为图片审较场景做了大量适配优化。',
+    desc: '当前版本为小v魔改版，为图片审校场景做了大量适配优化。',
     originalProjectInfo: '点击展开原项目信息',
     originalDesc: 'MegSpot是一款跨平台的本地应用，旨在为用户提供本地图片对比、视频对比、图片定制处理等便捷功能。\n可进入QQ交流群(782365536)了解详情、获取最新资讯（此为原项目发布者的交流群）。',
     manual: '使用手册',
@@ -320,7 +320,7 @@ export default {
     overlayBottom: '向下叠加显示',
     overlayTop: '向上叠加显示',
     verticalFlip: '纵向翻转',
-    horizontalFlip: '水平翻转翻转',
+    horizontalFlip: '水平翻转',
     previousFrame: '上一帧',
     nextFrame: '下一帧',
     frameStep: '逐帧对比播放间隔',
@@ -386,7 +386,7 @@ export default {
     minRenderInterval: '视频渲染最小间隔',
     processTip: '显示/隐藏 视频进度条',
     displayedFrames: '当前帧的序号',
-    displayedFramesInSecond: '当前帧序在该秒内的序号',
+    displayedFramesInSecond: '当前帧在该秒内的序号',
     totalFrames: '总帧数',
     frameRate: '帧率(FPS)',
     videoInfoViewerTitle: '视频信息',

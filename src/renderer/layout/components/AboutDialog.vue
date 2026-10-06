@@ -72,7 +72,7 @@
                 </el-select>
                 <el-color-picker v-model="compareBgColor" :predefine="['#ffffff', '#1e1e1e', '#2d2d2d', '#3c3c3c']" />
               </div>
-              <div style="font-size: 12px; color: #909399; margin-top: 4px">选空或取消选择恢复默认</div>
+              <div style="font-size: 12px; color: #909399; margin-top: 4px">清空选择或取消选择即可恢复默认值。</div>
             </el-form-item>
             <el-form-item :label="$t('general.importOrExportSettings')">
               <el-button @click="settingsImport" type="primary">{{ $t('general.import') }}</el-button>

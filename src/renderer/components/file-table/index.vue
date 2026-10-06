@@ -34,7 +34,7 @@
         </el-button>
         {{ $t('sortFile.afterAddFolder') }}
       </span>
-      <span v-else>There is no available files in current directory.</span>
+      <span v-else>There are no available files in the current directory.</span>
     </template>
     <vxe-column type="checkbox" width="48"></vxe-column>
     <vxe-column align="left" show-overflow="tooltip" field="name" title="Name" sortable>

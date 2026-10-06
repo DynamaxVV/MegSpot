@@ -56,8 +56,8 @@ export default {
     fileLoading: 'Loading files...',
     filterFileName: 'Filter File Name',
     enableRegular: 'Enable/Disable Regular',
-    groupNum: 'group number\nCtrl + ← page backword\nCtrl + → page forward',
-    lastModifyTime: 'lastModifyTime',
+    groupNum: 'group number\nCtrl + ← page backward\nCtrl + → page forward',
+    lastModifyTime: 'Last modified',
     operate: 'operate',
     size: 'size',
     scale: 'scale',
@@ -71,7 +71,7 @@ export default {
     imageBrowser: 'image browser',
     imageList: 'Image List',
     videoList: 'Video List',
-    invalidFolderTip: 'Folder does not exist,please input valid path',
+    invalidFolderTip: 'Folder does not exist. Please enter a valid path.',
     imageFolderList: 'Image Folder List',
     videoFolderList: 'Video Folder List',
     common: 'common'
@@ -231,11 +231,11 @@ export default {
     entries: {
       image: {
         title: 'IMAGE',
-        desc: 'Image viewer,support to view and compare local pictures'
+        desc: 'Image viewer for viewing and comparing local images.'
       },
       video: {
         title: 'VIDEO',
-        desc: 'video viewer,support to view and compare local video'
+        desc: 'Video viewer for viewing and comparing local videos.'
       },
       viewer: {
         title: 'VIEWER',
@@ -277,7 +277,7 @@ export default {
       rowLabel: 'Rows',
       columnLabel: 'Columns',
       confirm: 'Confirm Create',
-      layoutExists: 'The layout config is already exists',
+      layoutExists: 'The layout configuration already exists.',
       successAdded: 'New layout config added successfully',
       confirmUseNewLayout: 'Whether to use this layout immediately',
       confirmDialogTitle: 'Use New Layout',
@@ -301,7 +301,7 @@ export default {
       output: 'output levels',
       inputShadow: 'inputShadow',
       inputHighlight: 'inputHighlight',
-      inputMidtones: 'inputMidtones',
+      inputMidtones: 'Input midtones',
       outputShadow: 'outputShadow',
       outputHighlight: 'outputHighlight',
       histogramTip: 'use specified color channel'
@@ -310,7 +310,7 @@ export default {
     resetAll: 'reset all'
   },
   imageCenter: {
-    bilinearInterpolation: 'bilinar',
+    bilinearInterpolation: 'bilinear',
     shortSelectedMsg: 'selected',
     selectedMsg: 'The picture has been selected and can be operated individually',
     colorPicker: 'color picker',
@@ -358,12 +358,12 @@ export default {
     tip: 'By default, the first two pictures that have been selected are compared. If you need to modify, please open the selected to switch.'
   },
   generateGIF: {
-    title: 'title',
+    title: 'Generate comparison GIF',
     image: 'image',
     description: 'description',
     operation: 'operation',
     tips: {
-      wait: 'The generation time may take tens of seconds, please be patient',
+      wait: 'Generation may take tens of seconds. Please wait.',
       saved: 'gif file saved successfully',
       finished: 'gif generation successfully finished!',
       tooSmallNumber: 'The number of selected images is too small!'
@@ -393,10 +393,10 @@ export default {
     frameRate: 'frame rate (FPS)',
     videoInfoViewerTitle: 'Video Info',
     videoInfoTip: 'show video info',
-    reAnalyze: 'reAnalyze',
-    reAnalyzeTip: 'reAnalyze video info',
+    reAnalyze: 'Reanalyze',
+    reAnalyzeTip: 'Analyze video information again',
     resetAnalyze: 'reset',
-    enableSyncTime: 'enableSyncTime'
+    enableSyncTime: 'Sync video progress'
   },
   sortFile: {
     apply: 'Apply',
