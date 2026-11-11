@@ -8,10 +8,10 @@
 
 当前版本：
 
-- package 版本：<code>2.2.12-vv1.0.11</code>
-- 建议 Git tag：<code>v2.2.12-vv1.0.11</code>
+- package 版本：<code>2.2.12-vv1.0.12</code>
+- 建议 Git tag：<code>v2.2.12-vv1.0.12</code>
 - Release 类型：GitHub Pre-release
-- 首次发布平台：Windows x64 Portable、Linux x64 AppImage、macOS arm64 DMG
+- 本次发布平台：Windows x64 Portable、macOS arm64 DMG；工作流仍可构建 Linux x64 AppImage
 - 签名状态：Windows 与 macOS 预发布产物未签名；macOS 首次打开可能触发 Gatekeeper 提示
 
 tag 使用 <code>v*-vv*</code> 形式。工作流只对这种修改版标签触发，避免上游版本标签或普通测试标签误生成公开 Release。
@@ -100,9 +100,9 @@ npm run build:linux -- --x64
 
 产物输出到 <code>build/</code>。当前配置计划生成：
 
-- <code>MegSpot-2.2.12-vv1.0.11-win-x64-portable.exe</code>
-- <code>MegSpot-2.2.12-vv1.0.11-linux-x86_64.AppImage</code>
-- <code>MegSpot-2.2.12-vv1.0.11-mac-arm64.dmg</code>
+- <code>MegSpot-2.2.12-vv1.0.12-win-x64-portable.exe</code>
+- <code>MegSpot-2.2.12-vv1.0.12-linux-x86_64.AppImage</code>
+- <code>MegSpot-2.2.12-vv1.0.12-mac-arm64.dmg</code>
 
 实际文件名以 electron-builder 输出为准。不要把旧版本残留文件、调试目录或临时压缩包一并上传。
 
@@ -112,9 +112,9 @@ npm run build:linux -- --x64
 find build -maxdepth 1 -type f -print
 file build/*.exe build/*.AppImage build/*.dmg
 sha256sum \
-  build/MegSpot-2.2.12-vv1.0.11-win-x64-portable.exe \
-  build/MegSpot-2.2.12-vv1.0.11-linux-x86_64.AppImage \
-  build/MegSpot-2.2.12-vv1.0.11-mac-arm64.dmg > SHA256SUMS
+  build/MegSpot-2.2.12-vv1.0.12-win-x64-portable.exe \
+  build/MegSpot-2.2.12-vv1.0.12-linux-x86_64.AppImage \
+  build/MegSpot-2.2.12-vv1.0.12-mac-arm64.dmg > SHA256SUMS
 ~~~
 
 上面的 <code>sha256sum</code> 适用于 Linux/CI；在 macOS 本地可将命令替换为 <code>shasum -a 256</code>。
@@ -135,8 +135,8 @@ macOS DMG 可以作为明确标注的公开预发布资产，但在完成 Apple 
 
 ~~~bash
 git status --short
-git tag -a v2.2.12-vv1.0.11 -m "release: v2.2.12-vv1.0.11"
-git push fork v2.2.12-vv1.0.11
+git tag -a v2.2.12-vv1.0.12 -m "release: v2.2.12-vv1.0.12"
+git push fork v2.2.12-vv1.0.12
 ~~~
 
 其中 <code>fork</code> 是本仓库远程名时才使用；如果远程名不同，请替换为实际指向 <code>DynamaxVV/MegSpot</code> 的 remote。推送后在 GitHub Actions 页面确认 quality、build 和 release 三个 job 均成功。
@@ -147,8 +147,8 @@ git push fork v2.2.12-vv1.0.11
 
 工作流创建 Draft 后，发布者必须逐项检查：
 
-- tag 为 <code>v2.2.12-vv1.0.11</code>，package 版本为 <code>2.2.12-vv1.0.11</code>，Release 标题应为 <code>MegSpot v2.2.12-vv1.0.11</code>。
-- 只有 Windows x64 Portable、Linux x64 AppImage、macOS arm64 DMG 和 <code>SHA256SUMS</code> 等预期资产。
+- tag 为 <code>v2.2.12-vv1.0.12</code>，package 版本为 <code>2.2.12-vv1.0.12</code>，Release 标题应为 <code>MegSpot v2.2.12-vv1.0.12</code>。
+- 本次发布只包含 Windows x64 Portable、macOS arm64 DMG 和 <code>SHA256SUMS</code>；工作流如生成 Linux 资产，发布前需从草稿中移除并重新生成校验文件。
 - 下载资产的 SHA-256 与 <code>SHA256SUMS</code> 一致。
 - Windows 产物明确标注“未签名”；Linux AppImage 可执行。
 - macOS DMG 明确标注“未签名”，并记录首次打开可能触发 Gatekeeper 提示。
@@ -161,21 +161,17 @@ git push fork v2.2.12-vv1.0.11
 ## 7. 建议的 Release Notes 模板
 
 ~~~markdown
-## MegSpot 2.2.12-vv1.0.11
+## MegSpot 2.2.12-vv1.0.12
 
 这是基于 MegEngine/MegSpot 2.2.12 的非官方二次开发预发布版本，由 DynamaxVV 维护。
 
 ### 主要变化
 
-- 首页配对预览支持按组独立开启的按顺序匹配，并统一使用气泡弹窗配置单组或多组规则。
-- 优化首页布局与弹性容器，解决多文件夹时配对预览表格溢出问题。
-- 修复对比工作区从 9/10 切换到 10/10 等场景的页码位宽变化，切页时右侧按钮保持稳定。
-- 保留上一版本的 PSD 对比、连续切页画布复用、文件夹配对、审校和诊断能力。
+- 新配置的图片对比背景默认使用黑色，可在设置中选择棋盘格或其他颜色；已有背景偏好不受影响。
 
 ### 下载
 
 - Windows x64 Portable：未签名，Windows SmartScreen 可能提示风险。
-- Linux x64 AppImage：下载后赋予执行权限。
 - macOS arm64 DMG：未签名，首次打开可能触发 Gatekeeper 提示；当前仅支持 Apple Silicon。
 
 ### 已知限制
