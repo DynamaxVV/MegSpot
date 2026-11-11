@@ -65,14 +65,14 @@
             </el-form-item>
             <el-form-item label="对比背景色">
               <div flex="cross:center" style="gap: 8px">
-                <el-select v-model="compareBgColor" style="width: 120px" placeholder="默认" clearable>
-                  <el-option label="默认" value=""></el-option>
+                <el-select v-model="compareBgColor" style="width: 120px" placeholder="棋盘格" clearable>
+                  <el-option label="棋盘格" value=""></el-option>
                   <el-option label="白色" value="#ffffff"></el-option>
                   <el-option label="黑色" value="#1e1e1e"></el-option>
                 </el-select>
                 <el-color-picker v-model="compareBgColor" :predefine="['#ffffff', '#1e1e1e', '#2d2d2d', '#3c3c3c']" />
               </div>
-              <div style="font-size: 12px; color: #909399; margin-top: 4px">清空选择或取消选择即可恢复默认值。</div>
+              <div style="font-size: 12px; color: #909399; margin-top: 4px">清空选择或取消选择即可使用棋盘格背景。</div>
             </el-form-item>
             <el-form-item :label="$t('general.importOrExportSettings')">
               <el-button @click="settingsImport" type="primary">{{ $t('general.import') }}</el-button>
