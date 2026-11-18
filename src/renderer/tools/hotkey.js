@@ -119,6 +119,11 @@ export const DEFAULT_HOTKEYS = [
     keysArr: [['ArrowRight']]
   },
   {
+    name: 'pairDiff',
+    desc: 'hold to show differences',
+    keysArr: [['f']]
+  },
+  {
     name: 'pairReset',
     desc: 'reset the current pair',
     keysArr: [[' ']]

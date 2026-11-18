@@ -95,7 +95,7 @@
       <div v-if="compareTask.dirty" class="workspace-notice workspace-notice-warning">
         {{ $t('dashboard.compareTask.warnings.staleBody') }}
       </div>
-      <div v-if="showSplitFallbackNotice" class="workspace-notice">
+      <div v-if="showOverlayFallbackNotice" class="workspace-notice">
         {{ $t('dashboard.compareTask.workspace.splitUnavailable') }}
       </div>
       <div ref="workspaceBody" class="workspace-body">
@@ -124,6 +124,8 @@
                   :activeAnnotationId="selectedAnnotationId"
                   :_width="panelSize.width"
                   :_height="panelSize.height"
+                  :diffActive="inlineDiffActive"
+                  :diffMaskSource="diffLeftCanvas"
                   @annotation-select="selectAnnotation"
                 />
                 <div v-else class="panel-placeholder">
@@ -153,6 +155,8 @@
                   :activeAnnotationId="selectedAnnotationId"
                   :_width="panelSize.width"
                   :_height="panelSize.height"
+                  :diffActive="inlineDiffActive"
+                  :diffMaskSource="diffRightCanvas"
                   @annotation-select="selectAnnotation"
                 />
                 <div v-if="isSingleMode && singleModeNotice && singleModeNoticeVisible" class="single-mode-notice">
@@ -172,8 +176,28 @@
               </div>
             </div>
           </div>
-          <div v-show="showSplitCompare" class="split-mode">
-            <ImageDragDropCompare ref="splitCompare" :showCompare="true" :isExternal="true" :embedded="true" />
+          <div v-show="showOverlayCompare" class="split-mode">
+            <ImageDragDropCompare
+              ref="splitCompare"
+              :showCompare="true"
+              :isExternal="true"
+              :embedded="true"
+              :diffMode="showOverlayCompare && isDiffMode"
+            />
+          </div>
+          <div
+            v-if="showInlineDiffStatus"
+            class="inline-diff-status"
+            :class="{ 'is-empty': diffCount === 0, 'is-error': diffError }"
+          >
+            <span class="diff-swatch"></span>
+            <span role="status" aria-live="polite">{{ diffStatusText }}</span>
+            <span v-if="diffSizeMismatch" class="diff-size-note">
+              {{ $t('imageDragDropCompare.diff.sizeMismatch') }}
+            </span>
+            <span v-if="diffScaled" class="diff-size-note" :title="$t('imageDragDropCompare.diff.scaledHelp')">
+              {{ $t('imageDragDropCompare.diff.scaled') }}
+            </span>
           </div>
         </div>
         <aside
@@ -250,6 +274,7 @@ import { getImageUrlSyncNoCache } from '@/utils/image'
 import { isPsdPath, preloadPsdWindow, PSD_DECODE_PURPOSE } from '@/utils/psdLoader'
 import { inspectImageSourceFreshness } from '@/utils/imageComparisonSources'
 import { findPreviousRowImage } from '@/utils/imagePairing'
+import { computeDiffPreview } from '@/utils/imageDiffPreview'
 import {
   getTranslationForImage,
   normalizeTranslationImageName
@@ -301,6 +326,18 @@ export default {
       selectedAnnotationId: null,
       singleModeNoticeVisible: false,
       singleModeNoticeTimer: null,
+      diffPreviewActive: false,
+      diffLeftCanvas: null,
+      diffRightCanvas: null,
+      diffMaskKey: '',
+      diffLoadingKey: '',
+      diffCount: null,
+      diffComputing: false,
+      diffError: false,
+      diffSizeMismatch: false,
+      diffScaled: false,
+      diffToken: 0,
+      splitImageListKey: '',
       hotkeyDownEvents: new Map(),
       hotkeyUpEvents: new Map(),
       operationId: '',
@@ -333,6 +370,35 @@ export default {
     },
     isSingleMode() {
       return this.compareMode === 'single'
+    },
+    isDiffMode() {
+      return this.diffPreviewActive
+    },
+    inlineDiffActive() {
+      return this.diffPreviewActive && !this.showOverlayCompare
+    },
+    diffPairKey() {
+      if (!this.currentRow || !this.currentRow.left || !this.currentRow.right) {
+        return ''
+      }
+      return `${this.currentRow.left.path}\u0000${this.currentRow.right.path}`
+    },
+    diffStatusText() {
+      if (this.diffComputing) {
+        return this.$t('imageDragDropCompare.diff.computing')
+      }
+      if (this.diffError) {
+        return this.$t('imageDragDropCompare.diff.error')
+      }
+      if (this.diffCount === null) {
+        return this.$t('imageDragDropCompare.diff.computing')
+      }
+      if (this.diffCount === 0) {
+        return this.$t('imageDragDropCompare.diff.none')
+      }
+      return this.$t('imageDragDropCompare.diff.count', {
+        count: this.diffCount.toLocaleString()
+      })
     },
     currentRow() {
       return this.currentCompareRow
@@ -374,13 +440,16 @@ export default {
     splitAvailable() {
       return Boolean(this.currentRow && this.currentRow.left && this.currentRow.right)
     },
-    showSplitCompare() {
+    showOverlayCompare() {
       return this.compareMode === 'split' && this.splitAvailable
     },
     showSideBySide() {
-      return this.compareMode !== 'split' || !this.splitAvailable
+      return !this.showOverlayCompare
     },
-    showSplitFallbackNotice() {
+    showInlineDiffStatus() {
+      return this.diffPreviewActive && !this.showOverlayCompare
+    },
+    showOverlayFallbackNotice() {
       return this.compareMode === 'split' && !this.splitAvailable
     },
     baselineVisualSide() {
@@ -390,9 +459,14 @@ export default {
       const hotkeys = new Map(this.$store.state.preferenceStore.preference.hotkeys.map((item) => [item.name, item]))
       const formatHotkey = (name) => (hotkeys.get(name)?.keysArr || [])
         .slice(0, 1)
-        .map((keys) => keys.map((key) => PRESET_KEYS_MAP.get(key)?.label || key).join('+'))
+        .map((keys) => keys
+          .map((key) => {
+            const label = PRESET_KEYS_MAP.get(key)?.label || key
+            return /^[a-z]$/.test(label) ? label.toUpperCase() : label
+          })
+          .join('+'))
         .join('')
-      return `${formatHotkey('pairPrevious')}、${formatHotkey('pairNext')}键翻页，${formatHotkey('pairPreviewLeft')}、${formatHotkey('pairPreviewRight')}键切换对比，双击调整单图缩放，${formatHotkey('pairReset')}键复位`
+      return `${formatHotkey('pairPrevious')}${formatHotkey('pairNext')} 翻页 · ${formatHotkey('pairPreviewLeft')}${formatHotkey('pairPreviewRight')} 看对侧 · ${formatHotkey('pairDiff')} 看差异 · 双击单图缩放 · ${formatHotkey('pairReset')} 复位`
     },
     displayedLeft() {
       return this.displayedImage('left')
@@ -517,13 +591,15 @@ export default {
         ['pairNext', () => this.stepRow(1)],
         ['pairPreviewLeft', this.startLeftPreview],
         ['pairPreviewRight', this.startRightPreview],
+        ['pairDiff', this.startDiffPreview],
         ['pairReset', this.resetCurrentGroup],
         ['reviewToggle', this.toggleReviewMode],
         ['reviewNumbers', this.toggleAnnotationNumbers]
       ])
       this.hotkeyUpEvents = new Map([
         ['pairPreviewLeft', this.cancelPreview],
-        ['pairPreviewRight', this.cancelPreview]
+        ['pairPreviewRight', this.cancelPreview],
+        ['pairDiff', this.stopDiffPreview]
       ])
     },
     moveImages(x, y) {
@@ -687,7 +763,7 @@ export default {
               this.$refs[refName] && this.$refs[refName].reset(false)
             })
           }
-          if (this.showSplitCompare && this.$refs.splitCompare) {
+          if (this.showOverlayCompare && this.$refs.splitCompare) {
             this.$refs.splitCompare.reset()
           }
         })
@@ -708,7 +784,7 @@ export default {
     },
     syncReviewLayout() {
       this.syncPanelSize()
-      if (this.showSplitCompare && this.$refs.splitCompare) {
+      if (this.showOverlayCompare && this.$refs.splitCompare) {
         this.$refs.splitCompare.refreshLayout()
       }
     },
@@ -763,11 +839,11 @@ export default {
       window.addEventListener('resize', this.syncPanelSize, true)
       window.addEventListener('keydown', this.handleKeydown, true)
       window.addEventListener('keyup', this.handleKeyup, true)
-      window.addEventListener('blur', this.cancelPreview, true)
+      window.addEventListener('blur', this.handleWindowBlur, true)
       document.addEventListener('mousedown', this.handleDocumentMouseDown, true)
       this.$nextTick(() => {
         this.updateSplitCompare()
-        if (this.showSplitCompare && this.$refs.splitCompare) {
+        if (this.showOverlayCompare && this.$refs.splitCompare) {
           window.requestAnimationFrame(() => this.$refs.splitCompare.refreshLayout())
         }
         window.requestAnimationFrame(this.syncPanelSize)
@@ -780,13 +856,16 @@ export default {
         return
       }
       this.workspaceActive = false
+      this.splitImageListKey = ''
       preloadPsdWindow([])
       window.removeEventListener('keydown', this.handleKeydown, true)
       window.removeEventListener('keyup', this.handleKeyup, true)
-      window.removeEventListener('blur', this.cancelPreview, true)
+      window.removeEventListener('blur', this.handleWindowBlur, true)
       window.removeEventListener('resize', this.syncPanelSize, true)
       document.removeEventListener('mousedown', this.handleDocumentMouseDown, true)
       this.stopReviewPanelResize()
+      this.stopDiffPreview()
+      this.releaseDiffMask()
       this.cancelPreview()
       this.closeLiveWatcher()
     },
@@ -841,10 +920,18 @@ export default {
       ]
     },
     updateSplitCompare() {
-      if (!this.showSplitCompare || !this.$refs.splitCompare) {
+      if (!this.showOverlayCompare || !this.$refs.splitCompare) {
         return
       }
-      this.$refs.splitCompare.setImageInfoList(this.buildSplitList())
+      const imageInfoList = this.buildSplitList()
+      const nextKey = imageInfoList
+        .map((item) => `${item.path}\u0000${item.imageUrl}\u0000${item.name}`)
+        .join('\n')
+      if (nextKey === this.splitImageListKey) {
+        return
+      }
+      this.splitImageListKey = nextKey
+      this.$refs.splitCompare.setImageInfoList(imageInfoList)
     },
     getSplitImageUrl(imagePath) {
       return getImageUrlSyncNoCache(imagePath)
@@ -919,6 +1006,7 @@ export default {
             canvas.initImage(false)
           }
         })
+        this.splitImageListKey = ''
         this.$nextTick(() => {
           this.updateSplitCompare()
         })
@@ -998,9 +1086,96 @@ export default {
       }
     },
     handleKeyup(event) {
+      if (this.diffPreviewActive && this.isDiffHotkeyKey(event.key)) {
+        this.stopDiffPreview()
+      }
       if (handleEvent(event, this.hotkeyUpEvents)) {
         event.preventDefault()
       }
+    },
+    isDiffHotkeyKey(key) {
+      const hotkey = (this.preference.hotkeys || []).find((item) => item.name === 'pairDiff')
+      return Boolean(hotkey && hotkey.keysArr.some((keys) => keys.includes(key)))
+    },
+    startDiffPreview() {
+      if (!this.splitAvailable || this.diffPreviewActive) {
+        return
+      }
+      this.cancelPreview()
+      this.diffPreviewActive = true
+      this.ensureDiffMask()
+    },
+    stopDiffPreview() {
+      if (!this.diffPreviewActive) {
+        return
+      }
+      this.diffPreviewActive = false
+    },
+    releaseDiffMask() {
+      this.diffToken += 1
+      ;[this.diffLeftCanvas, this.diffRightCanvas].forEach((canvas) => {
+        if (!canvas) return
+        canvas.width = 0
+        canvas.height = 0
+      })
+      this.diffLeftCanvas = null
+      this.diffRightCanvas = null
+      this.diffMaskKey = ''
+      this.diffLoadingKey = ''
+      this.diffCount = null
+      this.diffComputing = false
+      this.diffError = false
+      this.diffSizeMismatch = false
+      this.diffScaled = false
+    },
+    async ensureDiffMask() {
+      const leftPath = this.currentRow?.left?.path
+      const rightPath = this.currentRow?.right?.path
+      if (!leftPath || !rightPath) {
+        return
+      }
+      const key = this.diffPairKey
+      if (!key || this.diffMaskKey === key || this.diffLoadingKey === key) {
+        return
+      }
+      const token = ++this.diffToken
+      this.diffLoadingKey = key
+      this.diffComputing = true
+      this.diffError = false
+      this.diffCount = null
+      this.diffSizeMismatch = false
+      this.diffScaled = false
+      try {
+        const result = await computeDiffPreview(leftPath, rightPath)
+        if (token !== this.diffToken) {
+          result.leftCanvas.width = 0
+          result.leftCanvas.height = 0
+          result.rightCanvas.width = 0
+          result.rightCanvas.height = 0
+          return
+        }
+        this.diffLeftCanvas = result.leftCanvas
+        this.diffRightCanvas = result.rightCanvas
+        this.diffMaskKey = key
+        this.diffCount = result.count
+        this.diffSizeMismatch = result.sizeMismatch
+        this.diffScaled = result.scaled
+        this.diffError = false
+      } catch (error) {
+        if (token === this.diffToken) {
+          this.diffError = true
+          this.diffCount = null
+        }
+      } finally {
+        if (token === this.diffToken) {
+          this.diffLoadingKey = ''
+          this.diffComputing = false
+        }
+      }
+    },
+    handleWindowBlur() {
+      this.stopDiffPreview()
+      this.cancelPreview()
     },
     cancelPreview() {
       const targetCanvas = this.getCanvas(this.previewSide)
@@ -1071,6 +1246,8 @@ export default {
   watch: {
     currentRow: {
       handler(value, previousValue) {
+        this.stopDiffPreview()
+        this.releaseDiffMask()
         this.cancelPreview()
         this.selectedAnnotationId = null
         this.showSingleModeNotice()
@@ -1084,10 +1261,16 @@ export default {
       },
       immediate: true
     },
-    showSplitCompare() {
+    diffPairKey(value) {
+      if (this.diffPreviewActive && value) {
+        this.releaseDiffMask()
+        this.ensureDiffMask()
+      }
+    },
+    showOverlayCompare() {
       this.$nextTick(() => {
         this.updateSplitCompare()
-        if (this.showSplitCompare && this.$refs.splitCompare) {
+        if (this.showOverlayCompare && this.$refs.splitCompare) {
           window.requestAnimationFrame(() => this.$refs.splitCompare.refreshLayout())
         }
       })
@@ -1115,6 +1298,7 @@ export default {
     },
     'compareTask.version'() {
       this.temporaryFallbacks = {}
+      this.splitImageListKey = ''
       this.syncLiveWatcher()
     }
   }
@@ -1208,8 +1392,49 @@ export default {
 
   .compare-stage {
     display: flex;
+    position: relative;
     min-width: 0;
     flex-direction: column;
+  }
+
+  .inline-diff-status {
+    position: absolute;
+    z-index: 3;
+    top: 16px;
+    left: 50%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    max-width: calc(100% - 32px);
+    padding: 6px 9px;
+    transform: translateX(-50%);
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.2;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .inline-diff-status .diff-swatch {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background-color: rgb(255, 77, 94);
+  }
+
+  .inline-diff-status.is-empty .diff-swatch {
+    background-color: #8f939b;
+  }
+
+  .inline-diff-status.is-error .diff-swatch {
+    background-color: #e6a23c;
+  }
+
+  .inline-diff-status .diff-size-note {
+    color: #ffd08a;
   }
 
   .split-mode {

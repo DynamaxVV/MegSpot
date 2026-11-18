@@ -92,6 +92,7 @@ export default {
     pairNext: 'Next pair',
     pairPreviewLeft: 'Temporarily show the right image on the left',
     pairPreviewRight: 'Temporarily show the left image on the right',
+    pairDiff: 'Hold to show differences',
     pairReset: 'Reset current pair',
     reviewToggle: 'Toggle proofing mode',
     reviewNumbers: 'Show/hide proofing annotation numbers'
@@ -355,7 +356,16 @@ export default {
   imageDragDropCompare: {
     hideLine: 'Hide filenames and comparison line',
     displayLine: 'Display filenames and comparison line',
-    tip: 'By default, the first two pictures that have been selected are compared. If you need to modify, please open the selected to switch.'
+    tip: 'By default, the first two pictures that have been selected are compared. If you need to modify, please open the selected to switch.',
+    diff: {
+      computing: 'Computing differences…',
+      error: 'Failed to compute differences',
+      none: 'No differences found',
+      count: '{count} differing pixels',
+      sizeMismatch: 'Sizes differ',
+      scaled: 'Scaled',
+      scaledHelp: 'Large images are compared with a 4096 px long-edge limit.'
+    }
   },
   generateGIF: {
     title: 'Generate comparison GIF',

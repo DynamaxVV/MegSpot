@@ -28,7 +28,7 @@ This repository is an unofficial modified edition maintained by [vv](https://git
 
 - **Paired image comparison workspace**: add images or folders on the left and right, preview pairing, reorder sources, and enter comparison from one flow.
 - **Explicit pairing rules**: exact basename matching ignores extension and case, with optional per-group sequential matching (match in order without comparing names); remaining images pair in each side's sort order; folders include direct child images only and deduplicate absolute paths. When adding a folder from the home page, a chain with exactly one child folder is resolved to its innermost folder.
-- **Three comparison layouts**: side by side, single, and split, with keyboard navigation between pairs, temporary opposite-side viewing, and optional zoom-ratio display in the lower-left corner of side-by-side canvases.
+- **Three comparison layouts**: side by side, single, and split. A configurable hold-to-show hotkey temporarily highlights only the regions that differ between the two sides, restores the previous view on release, and shows a differing-pixel count. Keyboard navigation between pairs, temporary opposite-side viewing, and optional zoom-ratio display in the lower-left corner of side-by-side canvases are included.
 - **Source-change protection**: content edits reload; additions, removals, and renames freeze the task until pairs are explicitly refreshed.
 - **Review annotations**: read valid TXT annotations from image-source folders, show annotation numbers on the canvases, and inspect review text in a side panel.
 - **Large-image and rapid-navigation work**: reuse the left and right <code>ImageCanvas</code> instances during side-by-side page turns to avoid repeated component creation, while managing thumbnail caches, <code>ImageBitmap</code>, OpenCV matrices, Blob URLs, Canvas backing stores, and nearby-pair preloading. PSD files use a dedicated decode worker, purpose-based resolution tiers, and only the previous and next pair are preloaded.
@@ -47,7 +47,7 @@ The dashboard shows a pairing preview before entering the workspace. Basenames a
 
 ### 3. Compare images
 
-Use side-by-side, single, or split mode. Up and Down move between pairs; holding Left or Right temporarily shows the opposite side. Color and filter settings persist when switching pairs or returning to the dashboard; use “Reset all” in the filter panel to restore defaults.
+Use side-by-side, single, or split mode. Up and Down move between pairs; holding Left or Right temporarily shows the opposite side. Hold the configurable “show differences” hotkey (F by default) to temporarily display only the differing pixels, and release it to restore the previous view at the same zoom and position. In side-by-side mode differences use the previous red highlight over a low-opacity grayscale view of each side. Color and filter settings persist when switching pairs or returning to the dashboard; use “Reset all” in the filter panel to restore defaults.
 
 ### 4. Review and refresh
 

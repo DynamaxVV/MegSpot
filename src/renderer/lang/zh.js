@@ -91,6 +91,7 @@ export default {
     pairNext: '下一组配对',
     pairPreviewLeft: '在左侧暂时显示右图',
     pairPreviewRight: '在右侧暂时显示左图',
+    pairDiff: '按住临时显示差异',
     pairReset: '复位当前配对',
     reviewToggle: '打开/关闭审校模式',
     reviewNumbers: '显示/隐藏审校标注序号'
@@ -353,7 +354,16 @@ export default {
   imageDragDropCompare: {
     hideLine: '隐藏文件名和比较线',
     displayLine: '显示文件名和比较线',
-    tip: '默认情况下，比较已选的前两张图片。如需修改请打开已选进行切换。'
+    tip: '默认情况下，比较已选的前两张图片。如需修改请打开已选进行切换。',
+    diff: {
+      computing: '正在计算差异…',
+      error: '差异计算失败',
+      none: '未发现差异',
+      count: '差异区域 {count} px',
+      sizeMismatch: '尺寸不同',
+      scaled: '已缩放',
+      scaledHelp: '大图按最长边 4096 px 计算差异。'
+    }
   },
   generateGIF: {
     title: '生成对比动态图GIF',

@@ -39,6 +39,7 @@ jobs:
           BABEL_ENV=main node -r @babel/register src/renderer/utils/imagePairing.check.js
           BABEL_ENV=main node -r @babel/register src/renderer/utils/translationAnnotations.check.js
           BABEL_ENV=main node -r @babel/register src/renderer/utils/diagnosticLog.check.js
+          BABEL_ENV=main node -r @babel/register src/renderer/utils/imageDiff.check.js
 
       - name: Pack main process
         run: npm run pack:main

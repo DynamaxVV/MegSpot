@@ -57,7 +57,7 @@
           </div>
           <button
             v-for="annotation in annotations"
-            v-if="imagePosition"
+            v-if="imagePosition && !diffActive"
             :key="annotation.id"
             type="button"
             class="review-marker"
@@ -154,6 +154,14 @@ export default {
     diagnosticContext: {
       type: Object,
       default: () => ({})
+    },
+    diffActive: {
+      type: Boolean,
+      default: false
+    },
+    diffMaskSource: {
+      type: Object,
+      default: null
     },
     // name: {
     //   type: String,
@@ -468,6 +476,14 @@ export default {
           this.initImage(false)
           return
         }
+        this.drawImage()
+      }
+    },
+    diffActive() {
+      this.drawImage()
+    },
+    diffMaskSource() {
+      if (this.diffActive) {
         this.drawImage()
       }
     }
@@ -1033,6 +1049,12 @@ export default {
       }
       let { x, y, width, height } = this.imagePosition || this.getImageInitPos(this.canvas, this.image)
       this.cs.clearRect(0, 0, this._width, this._height)
+      if (this.diffActive) {
+        if (this.diffMaskSource) {
+          this.cs.drawImage(this.diffMaskSource, x, y, width, height)
+        }
+        return
+      }
       this.cs.drawImage(img ?? this.bitMap, x, y, width, height)
       this.drawRGBText()
     },

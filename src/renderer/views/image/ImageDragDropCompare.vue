@@ -35,11 +35,25 @@
         </span>
       </div>
     </div>
-    <div class="canvas">
+    <div class="canvas" :class="{ 'diff-mode': diffMode }">
       <canvas id="canvas"></canvas>
+      <div
+        v-if="diffMode"
+        class="diff-status"
+        :class="{ 'is-empty': diffCount === 0 }"
+      >
+        <span class="diff-swatch"></span>
+        <span role="status" aria-live="polite">{{ diffStatusText }}</span>
+        <span v-if="diffSizeMismatch" class="diff-size-note">
+          {{ $t('imageDragDropCompare.diff.sizeMismatch') }}
+        </span>
+        <span v-if="diffScaled" class="diff-size-note" :title="$t('imageDragDropCompare.diff.scaledHelp')">
+          {{ $t('imageDragDropCompare.diff.scaled') }}
+        </span>
+      </div>
       <el-tooltip :content="image1Name">
         <div
-          v-show="showName1 && status"
+          v-show="showName1 && status && !diffMode"
           id="name1"
           class="image-name"
           :style="`top: 20px; left: 20px;`"
@@ -49,7 +63,7 @@
       </el-tooltip>
       <el-tooltip :content="image2Name">
         <div
-          v-show="showName2 && status"
+          v-show="showName2 && status && !diffMode"
           id="name2"
           class="image-name"
           :style="
@@ -74,6 +88,12 @@ const { mapGetters, mapActions } = createNamespacedHelpers('imageStore')
 import { throttle } from '@/utils'
 import { getImageUrlSync } from '@/utils/image'
 import { PSD_DECODE_PURPOSE, isPsdPath, loadPsdImageElement } from '@/utils/psdLoader'
+import {
+  DEFAULT_DIFF_TOLERANCE,
+  MAX_DIFF_DIMENSION,
+  buildDiffMask,
+  getDiffCanvasSize
+} from '@/utils/imageDiff'
 import SelectedBtn from '@/components/selected-btn'
 import { EOF, DELIMITER, SORTING_FILE_NAME } from '@/constants'
 
@@ -96,6 +116,11 @@ export default {
       default: false
     },
     embedded: {
+      type: Boolean,
+      required: false,
+      default: false
+    },
+    diffMode: {
       type: Boolean,
       required: false,
       default: false
@@ -141,7 +166,19 @@ export default {
       hoverLine: null, //实际在移动的线的悬浮范围
       hoverHight: 0, //横线悬浮范围的高度
       hoverWidth: 0, //竖线悬浮范围的宽度
-      content: null //canvas和线的父亲
+      content: null, //canvas和线的父亲
+      diffCanvas: null,
+      diffLeftPixels: null,
+      diffRightPixels: null,
+      diffWidth: 0,
+      diffHeight: 0,
+      diffCount: null,
+      diffComputing: false,
+      diffError: false,
+      diffReady: false,
+      diffToken: 0,
+      diffSizeMismatch: false,
+      diffScaled: false
     }
   },
   computed: {
@@ -157,6 +194,23 @@ export default {
     },
     renderPixelRatio() {
       return this.imageConfig.displayMode === 'original' ? this.devicePixelRatio : 1
+    },
+    diffStatusText() {
+      if (this.diffComputing) {
+        return this.$t('imageDragDropCompare.diff.computing')
+      }
+      if (this.diffError) {
+        return this.$t('imageDragDropCompare.diff.error')
+      }
+      if (this.diffCount === null) {
+        return this.$t('imageDragDropCompare.diff.computing')
+      }
+      if (this.diffCount === 0) {
+        return this.$t('imageDragDropCompare.diff.none')
+      }
+      return this.$t('imageDragDropCompare.diff.count', {
+        count: this.diffCount.toLocaleString()
+      })
     }
   },
   watch: {
@@ -178,6 +232,9 @@ export default {
         this.imageLoadToken += 1
         this.disposeImageResources()
       }
+    },
+    diffMode() {
+      this.$nextTick(this.applyDiffMode)
     }
   },
   mounted() {
@@ -218,12 +275,157 @@ export default {
       if (this.image2 && this.image2.src) this.image2.src = ''
       this.image1 = null
       this.image2 = null
+      this.releaseDiffCache()
+    },
+    releaseDiffCache() {
+      this.diffToken += 1
+      if (this.diffCanvas) {
+        this.diffCanvas.width = 0
+        this.diffCanvas.height = 0
+      }
+      this.diffCanvas = null
+      this.diffLeftPixels = null
+      this.diffRightPixels = null
+      this.diffWidth = 0
+      this.diffHeight = 0
+      this.diffCount = null
+      this.diffComputing = false
+      this.diffError = false
+      this.diffReady = false
+      this.diffSizeMismatch = false
+      this.diffScaled = false
+    },
+    applyDiffMode() {
+      if (!this.canvas || !this.image1 || !this.image2) {
+        return
+      }
+      if (!this.imagePosition || !this.imagePosition.width) {
+        this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
+      }
+      if (this.diffMode && this.hasPsdImage()) {
+        this.initImage({ preserveViewport: true })
+        return
+      }
+      if (this.diffMode) {
+        this.computeDiff(this.imageLoadToken)
+        return
+      }
+      this.releaseDiffCache()
+      this.drawImage()
+    },
+    async computeDiff(loadToken = this.imageLoadToken) {
+      if (!this.diffMode || !this.canvas || !this.image1 || !this.image2) {
+        return
+      }
+      if (!this.imageBitMap1 || !this.imageBitMap2) {
+        return
+      }
+      const diffToken = ++this.diffToken
+      this.diffComputing = true
+      this.diffError = false
+      this.diffReady = false
+      this.diffCount = null
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      if (loadToken !== this.imageLoadToken || diffToken !== this.diffToken) {
+        return
+      }
+
+      const size = getDiffCanvasSize(
+        this.image1.width,
+        this.image1.height,
+        this.image2.width,
+        this.image2.height
+      )
+      this.diffSizeMismatch = this.image1.width !== this.image2.width
+        || this.image1.height !== this.image2.height
+      this.diffScaled = size.scaled
+      const leftCanvas = document.createElement('canvas')
+      const rightCanvas = document.createElement('canvas')
+      leftCanvas.width = size.width
+      leftCanvas.height = size.height
+      rightCanvas.width = size.width
+      rightCanvas.height = size.height
+
+      try {
+        const leftContext = leftCanvas.getContext('2d', { willReadFrequently: true })
+        const rightContext = rightCanvas.getContext('2d', { willReadFrequently: true })
+        leftContext.drawImage(this.imageBitMap1, 0, 0, size.width, size.height)
+        rightContext.drawImage(this.imageBitMap2, 0, 0, size.width, size.height)
+        const leftPixels = leftContext.getImageData(0, 0, size.width, size.height).data
+        const rightPixels = rightContext.getImageData(0, 0, size.width, size.height).data
+
+        if (loadToken !== this.imageLoadToken || diffToken !== this.diffToken) {
+          return
+        }
+        this.diffWidth = size.width
+        this.diffHeight = size.height
+        this.diffLeftPixels = leftPixels
+        this.diffRightPixels = rightPixels
+        if (!this.imagePosition || !this.imagePosition.width) {
+          this.imagePosition = this.getImageInitPos(this.canvas, this.getGeometrySource())
+        }
+        this.renderDiffMask(diffToken)
+      } catch (error) {
+        if (diffToken === this.diffToken) {
+          console.warn('Diff computation failed', error)
+          this.diffComputing = false
+          this.diffError = true
+        }
+      } finally {
+        leftCanvas.width = 0
+        leftCanvas.height = 0
+        rightCanvas.width = 0
+        rightCanvas.height = 0
+      }
+    },
+    renderDiffMask(diffToken = this.diffToken) {
+      if (!this.diffLeftPixels || !this.diffRightPixels || !this.diffWidth || !this.diffHeight) {
+        return
+      }
+      const { data, count } = buildDiffMask(
+        this.diffLeftPixels,
+        this.diffRightPixels,
+        this.diffWidth,
+        this.diffHeight,
+        DEFAULT_DIFF_TOLERANCE
+      )
+      if (diffToken !== this.diffToken) {
+        return
+      }
+      if (
+        !this.diffCanvas
+        || this.diffCanvas.width !== this.diffWidth
+        || this.diffCanvas.height !== this.diffHeight
+      ) {
+        if (this.diffCanvas) {
+          this.diffCanvas.width = 0
+          this.diffCanvas.height = 0
+        }
+        this.diffCanvas = document.createElement('canvas')
+        this.diffCanvas.width = this.diffWidth
+        this.diffCanvas.height = this.diffHeight
+      }
+      const context = this.diffCanvas.getContext('2d')
+      const imageData = context.createImageData(this.diffWidth, this.diffHeight)
+      imageData.data.set(data)
+      context.putImageData(imageData, 0, 0)
+      this.diffCount = count
+      this.diffComputing = false
+      this.diffError = false
+      this.diffReady = true
+      this.drawImage()
     },
     hasPsdImage() {
       if (!this.isExternal) return this.selectedList.some(isPsdPath)
       return this.imageInfoList?.some((item) => isPsdPath(item.path || item.imageUrl)) || false
     },
     getPsdDecodeOptions() {
+      if (this.diffMode) {
+        return {
+          purpose: PSD_DECODE_PURPOSE.display,
+          maxDimension: MAX_DIFF_DIMENSION
+        }
+      }
       const purpose = this.imageConfig.displayMode === 'original'
         ? PSD_DECODE_PURPOSE.original
         : PSD_DECODE_PURPOSE.display
@@ -261,7 +463,10 @@ export default {
       this.imgScale = 1
       this.initCanvas()
       this.initLine()
-      this.imagePosition = this.getImageInitPos(this.canvas, this.image1) //resize只重新绘图，不重新获取bitMap
+      const geometry = this.diffMode ? this.getGeometrySource() : this.image1
+      if (geometry) {
+        this.imagePosition = this.getImageInitPos(this.canvas, geometry) //resize只重新绘图，不重新获取bitMap
+      }
       this.drawImage()
     }),
     init() {
@@ -286,10 +491,11 @@ export default {
       }
       this.initCanvas()
       this.initLine()
-      if (!this.image2 || !this.image2.width) {
+      const geometry = this.getGeometrySource()
+      if (!geometry || !geometry.width) {
         return
       }
-      this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
+      this.imagePosition = this.getImageInitPos(this.canvas, geometry)
       this.drawImage()
     },
     reset() {
@@ -299,8 +505,18 @@ export default {
       this.imgScale = 1
       this.initCanvas()
       this.initLine()
-      this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
+      const geometry = this.getGeometrySource()
+      if (!geometry) {
+        return
+      }
+      this.imagePosition = this.getImageInitPos(this.canvas, geometry)
       this.drawImage()
+    },
+    getGeometrySource() {
+      if (this.diffMode && this.diffWidth && this.diffHeight) {
+        return { width: this.diffWidth, height: this.diffHeight }
+      }
+      return this.image2
     },
     initCanvas() {
       const rect = this.content ? this.content.getBoundingClientRect() : document.body.getBoundingClientRect()
@@ -383,9 +599,15 @@ export default {
       this.line2.style.top = this.hoverHight / 2 + 'px'
     },
     //初始化图片
-    async initImage() {
+    async initImage(options = {}) {
+      const preserveViewport = Boolean(options.preserveViewport)
+      const preservedPosition = preserveViewport && this.imagePosition
+        ? { ...this.imagePosition }
+        : null
       const token = ++this.imageLoadToken
-      this.imgScale = 1
+      if (!preserveViewport) {
+        this.imgScale = 1
+      }
       this.disposeImageResources()
 
       this.selectedList = [...this.imageList.slice(0, 2)]
@@ -410,7 +632,9 @@ export default {
         }
         this.image2 = loaded2.image
         if (isPsdPath(entry2?.path || this.selectedList[1])) this.image2PsdElement = loaded2
-        this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
+        if (!this.diffMode && !preserveViewport) {
+          this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
+        }
         this.imageBitMap2 = await createImageBitmap(this.image2)
 
         const loaded1 = await this.loadImageEntry(entry1, this.selectedList[0])
@@ -421,11 +645,25 @@ export default {
         this.image1 = loaded1.image
         if (isPsdPath(entry1?.path || this.selectedList[0])) this.image1PsdElement = loaded1
         this.imageBitMap1 = await createImageBitmap(this.image1)
-        this.drawImage()
+        if (preservedPosition) {
+          this.imagePosition = preservedPosition
+        }
+        if (this.diffMode) {
+          await this.computeDiff(token)
+        } else {
+          if (!this.imagePosition || !this.imagePosition.width) {
+            this.imagePosition = this.getImageInitPos(this.canvas, this.image2)
+          }
+          this.drawImage()
+        }
       } catch (error) {
         if (token === this.imageLoadToken) {
           console.warn('Split image load failed', error)
           this.disposeImageResources()
+          if (this.diffMode) {
+            this.diffComputing = false
+            this.diffError = true
+          }
         }
       }
     },
@@ -640,6 +878,26 @@ export default {
     },
 
     drawImage: throttle(50, function () {
+      if (!this.cs) {
+        return
+      }
+      if (this.diffMode) {
+        this.cs.clearRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight)
+        if (this.diffReady && this.diffCanvas && this.imagePosition.width) {
+          this.cs.drawImage(
+            this.diffCanvas,
+            this.imagePosition.x,
+            this.imagePosition.y,
+            this.imagePosition.width,
+            this.imagePosition.height
+          )
+        }
+        return
+      }
+      if (!this.imageBitMap2 || !this.imagePosition || !this.imagePosition.width) {
+        this.cs.clearRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight)
+        return
+      }
       let { x, y, width, height } = this.imagePosition
       let { cutLeft, cutHeight, useLeft, useHeight } = this.getImageParams()
       //清空画布再重新画图
@@ -821,6 +1079,44 @@ export default {
       position: absolute;
       left: 0px;
       background-color: white;
+    }
+    .diff-status {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 9px;
+      border-radius: 6px;
+      background-color: rgba(0, 0, 0, 0.72);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.2;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .diff-swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: rgb(255, 77, 94);
+    }
+    .diff-status.is-empty .diff-swatch {
+      background-color: #8f939b;
+    }
+    .diff-size-note {
+      color: #ffd08a;
+    }
+    &.diff-mode {
+      #canvas {
+        background-color: transparent;
+      }
+      #line1-hover,
+      #line2-hover {
+        display: none !important;
+      }
     }
     #line1-hover {
       position: absolute;

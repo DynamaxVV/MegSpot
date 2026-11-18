@@ -92,6 +92,7 @@ export default {
     pairNext: '次のペア',
     pairPreviewLeft: '左側に右の画像を一時表示',
     pairPreviewRight: '右側に左の画像を一時表示',
+    pairDiff: '押している間だけ差分を表示',
     pairReset: '現在のペアをリセット',
     reviewToggle: '校正モードのオン/オフ',
     reviewNumbers: '校正注釈番号の表示/非表示'
@@ -356,7 +357,16 @@ export default {
   imageDragDropCompare: {
     hideLine: 'ファイル名と比較行を非表示にする',
     displayLine: 'ファイル名と比較行を表示する',
-    tip: 'デフォルトでは、選択された画像の最初の2つが比較されます。 変更する場合は、選択を開いて切り替えてください。'
+    tip: 'デフォルトでは、選択された画像の最初の2つが比較されます。 変更する場合は、選択を開いて切り替えてください。',
+    diff: {
+      computing: '差分を計算中…',
+      error: '差分の計算に失敗しました',
+      none: '差分はありません',
+      count: '差分領域 {count} px',
+      sizeMismatch: 'サイズが異なります',
+      scaled: '縮小比較',
+      scaledHelp: '大きな画像は長辺 4096 px に縮小して差分を計算します。'
+    }
   },
   generateGIF: {
     title: '比較GIFアニメを生成',
